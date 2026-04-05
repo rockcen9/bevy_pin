@@ -1,6 +1,6 @@
-# bevy-spot
+# Bevy Pin
 
-This is a web based remote inspector for the Bevy engine, built using the Bevy engine (WASM).
+This is a web based remote inspector for the Bevy engine. It connects to your game utilizing the Bevy Remote Protocol.
 
 Example setup in [./examples/demo_game.rs](./examples/demo_game.rs)
 
