@@ -3,7 +3,7 @@ use crate::{manager::component::query::ui::query_panel, prelude::*};
 pub mod monitor_panel;
 
 #[derive(Component, Clone, Default)]
-#[require(DespawnOnExit::<AppState>(AppState::Component))]
+#[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
 struct ComponentPanelsRoot;
 
 pub fn plugin(app: &mut App) {

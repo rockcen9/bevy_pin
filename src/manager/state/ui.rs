@@ -1,4 +1,4 @@
-use crate::{manager::AppState, prelude::*};
+use crate::{manager::SidebarState, prelude::*};
 use std::sync::Arc;
 
 use super::get::{DiscoveredStates, send_next_state};
@@ -10,7 +10,7 @@ use crate::ui::theme::palette::{
 };
 
 #[derive(Component, Clone, Default)]
-#[require(DespawnOnExit::<AppState>(AppState::State), Name::new("StatePanelRoot"))]
+#[require(DespawnOnExit::<SidebarState>(SidebarState::State), Name::new("StatePanelRoot"))]
 pub struct StatePanelsRoot;
 
 #[derive(Component, Clone, Default)]
@@ -32,7 +32,7 @@ pub fn plugin(app: &mut App) {
     app.init_resource::<SpawnedStatePanels>()
         .init_resource::<SpawnedStateButtons>()
         .add_systems(
-            OnExit(AppState::State),
+            OnExit(SidebarState::State),
             (clear_spawned_panels, clear_spawned_buttons),
         )
         .add_systems(
@@ -233,7 +233,11 @@ fn update_button_colors(
             "[update_button_colors] {} / {} | current={:?} exists={} active={}",
             button.state_type_path, button.variant, current, state_exists, is_active
         );
-        color.set_if_neq(BackgroundColor(button_color(state_exists, is_active, interaction)));
+        color.set_if_neq(BackgroundColor(button_color(
+            state_exists,
+            is_active,
+            interaction,
+        )));
     }
 }
 
@@ -249,7 +253,11 @@ fn update_button_hover(
         let current = entry.and_then(|e| e.current.as_deref());
         let state_exists = entry.map_or(false, |e| e.current.is_some());
         let is_active = current == Some(&*button.variant);
-        color.set_if_neq(BackgroundColor(button_color(state_exists, is_active, interaction)));
+        color.set_if_neq(BackgroundColor(button_color(
+            state_exists,
+            is_active,
+            interaction,
+        )));
     }
 }
 

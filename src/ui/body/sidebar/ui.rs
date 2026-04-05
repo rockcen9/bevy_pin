@@ -1,4 +1,4 @@
-use super::AppState;
+use super::SidebarState;
 use crate::prelude::*;
 use crate::ui::theme::palette::{
     COLOR_BG_SURFACE, COLOR_LABEL_SECONDARY, COLOR_MENU_ACTIVE, COLOR_MENU_HOVER,
@@ -18,6 +18,9 @@ struct ResourceButton;
 struct StateButton;
 
 #[derive(Component, Default, Clone)]
+struct RemoteRpcButton;
+
+#[derive(Component, Default, Clone)]
 struct GithubButton;
 
 pub fn plugin(app: &mut App) {
@@ -28,8 +31,10 @@ pub fn plugin(app: &mut App) {
             on_component_button,
             on_resource_button,
             on_state_button,
+            on_remote_rpc_button,
             on_github_button,
-        ),
+        )
+            .run_if(in_state(ConnectionState::Connected)),
     );
 }
 
@@ -50,6 +55,7 @@ pub fn menu_panel() -> impl Scene {
             component_button(),
             resource_button(),
             state_button(),
+            // remote_rpc_button(),
             (
                 Node {
                     flex_grow: 1.0,
@@ -92,11 +98,11 @@ fn resource_button() -> impl Scene {
             padding: UiRect::horizontal(Val::Px(12.0)),
             border_radius: BorderRadius::all(Val::Px(8.0)),
         }
-        BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.0))
+        BackgroundColor(COLOR_MENU_NORMAL)
         Children [(
             Text("Resources")
             template(|_| Ok(TextFont::from_font_size(15.0)))
-            TextColor(Color::srgba(1.0, 1.0, 1.0, 0.85))
+            TextColor(COLOR_LABEL_SECONDARY)
         )]
     }
 }
@@ -113,38 +119,63 @@ fn state_button() -> impl Scene {
             padding: UiRect::horizontal(Val::Px(12.0)),
             border_radius: BorderRadius::all(Val::Px(8.0)),
         }
-        BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.0))
+        BackgroundColor(COLOR_MENU_NORMAL)
         Children [(
             Text("States")
             template(|_| Ok(TextFont::from_font_size(15.0)))
-            TextColor(Color::srgba(1.0, 1.0, 1.0, 0.85))
+            TextColor(COLOR_LABEL_SECONDARY)
+        )]
+    }
+}
+
+fn remote_rpc_button() -> impl Scene {
+    bsn! {
+        RemoteRpcButton
+        Button
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Px(44.0),
+            justify_content: JustifyContent::FlexStart,
+            align_items: AlignItems::Center,
+            padding: UiRect::horizontal(Val::Px(12.0)),
+            border_radius: BorderRadius::all(Val::Px(8.0)),
+        }
+        BackgroundColor(COLOR_MENU_NORMAL)
+        Children [(
+            Text("Remote RPC")
+            template(|_| Ok(TextFont::from_font_size(15.0)))
+            TextColor(COLOR_LABEL_SECONDARY)
         )]
     }
 }
 
 fn sync_menu_button_colors(
-    app_state: Res<State<AppState>>,
+    app_state: Res<State<SidebarState>>,
     mut query: Query<
         (
             &Interaction,
             &mut BackgroundColor,
             Option<&ComponentButton>,
             Option<&ResourceButton>,
+            Option<&RemoteRpcButton>,
         ),
         Or<(
             With<ComponentButton>,
             With<ResourceButton>,
             With<StateButton>,
+            With<RemoteRpcButton>,
         )>,
     >,
 ) {
-    for (interaction, mut bg, comp, res) in &mut query {
+    for (interaction, mut bg, comp, res, rpc) in &mut query {
         let is_active = if comp.is_some() {
-            *app_state.get() == AppState::Component
+            *app_state.get() == SidebarState::Component
         } else if res.is_some() {
-            *app_state.get() == AppState::Resource
+            *app_state.get() == SidebarState::Resource
+        } else if rpc.is_some() {
+            *app_state.get() == SidebarState::RemoteRPC
         } else {
-            *app_state.get() == AppState::State
+            *app_state.get() == SidebarState::State
         };
 
         let color = if is_active {
@@ -161,33 +192,44 @@ fn sync_menu_button_colors(
 
 fn on_component_button(
     query: Query<&Interaction, (Changed<Interaction>, With<ComponentButton>)>,
-    mut next_state: ResMut<NextState<AppState>>,
+    mut next_state: ResMut<NextState<SidebarState>>,
 ) {
     for interaction in &query {
         if *interaction == Interaction::Pressed {
-            next_state.set(AppState::Component);
+            next_state.set(SidebarState::Component);
         }
     }
 }
 
 fn on_resource_button(
     query: Query<&Interaction, (Changed<Interaction>, With<ResourceButton>)>,
-    mut next_state: ResMut<NextState<AppState>>,
+    mut next_state: ResMut<NextState<SidebarState>>,
 ) {
     for interaction in &query {
         if *interaction == Interaction::Pressed {
-            next_state.set(AppState::Resource);
+            next_state.set(SidebarState::Resource);
         }
     }
 }
 
 fn on_state_button(
     query: Query<&Interaction, (Changed<Interaction>, With<StateButton>)>,
-    mut next_state: ResMut<NextState<AppState>>,
+    mut next_state: ResMut<NextState<SidebarState>>,
 ) {
     for interaction in &query {
         if *interaction == Interaction::Pressed {
-            next_state.set(AppState::State);
+            next_state.set(SidebarState::State);
+        }
+    }
+}
+
+fn on_remote_rpc_button(
+    query: Query<&Interaction, (Changed<Interaction>, With<RemoteRpcButton>)>,
+    mut next_state: ResMut<NextState<SidebarState>>,
+) {
+    for interaction in &query {
+        if *interaction == Interaction::Pressed {
+            next_state.set(SidebarState::RemoteRPC);
         }
     }
 }

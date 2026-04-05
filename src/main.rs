@@ -7,7 +7,7 @@ pub const GAME_WIDTH: f32 = 1920.;
 pub const GAME_HEIGHT: f32 = 1080.;
 pub const GAME_VERSION: &str = env!("CARGO_PKG_VERSION");
 use bevy::{
-    input_focus::{tab_navigation::TabNavigationPlugin, InputDispatchPlugin},
+    input_focus::{InputDispatchPlugin, tab_navigation::TabNavigationPlugin},
     ui_widgets::EditableTextInputPlugin,
 };
 
@@ -69,6 +69,10 @@ fn main() -> AppExit {
 
     app.add_plugins(default_plugins);
 
+    #[cfg(feature = "dev")]
+    if !app.is_plugin_added::<bevy_inspector_egui::bevy_egui::EguiPlugin>() {
+        app.add_plugins(bevy_inspector_egui::bevy_egui::EguiPlugin::default());
+    }
     // Set up the `Pause` state.
     app.init_state::<Pause>();
     app.configure_sets(Update, PausableSystems.run_if(in_state(Pause(false))));

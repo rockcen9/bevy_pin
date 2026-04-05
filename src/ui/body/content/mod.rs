@@ -1,7 +1,7 @@
 use crate::{
     manager::{
         component::ui::component_panels_root, resource::ui::resource_panels_root,
-        state::ui::state_panels_root, AppState,
+        state::ui::state_panels_root,
     },
     prelude::*,
     ui::theme::palette::COLOR_BG_BASE,
@@ -11,14 +11,17 @@ use crate::{
 pub struct ContentPanel;
 
 pub fn plugin(app: &mut App) {
-    app.add_systems(Update, spawn_state_panel.run_if(in_state(AppState::State)));
     app.add_systems(
         Update,
-        spawn_resource_panel.run_if(in_state(AppState::Resource)),
+        spawn_state_panel.run_if(in_state(SidebarState::State)),
     );
     app.add_systems(
         Update,
-        spawn_component_panel.run_if(in_state(AppState::Component)),
+        spawn_resource_panel.run_if(in_state(SidebarState::Resource)),
+    );
+    app.add_systems(
+        Update,
+        spawn_component_panel.run_if(in_state(SidebarState::Component)),
     );
 }
 pub fn content_panel() -> impl Scene {

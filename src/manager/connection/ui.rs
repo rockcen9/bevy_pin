@@ -10,13 +10,13 @@ pub fn plugin(app: &mut App) {
 
 fn spawn_overlay(
     mut commands: Commands,
-    state: Res<ConnectionState>,
+    state: Res<State<ConnectionState>>,
     overlay: Query<(), With<DisconnectedOverlay>>,
 ) {
     if !state.is_changed() {
         return;
     }
-    if *state != ConnectionState::Disconnected {
+    if *state.get() != ConnectionState::Disconnected {
         return;
     }
     if !overlay.is_empty() {
@@ -28,13 +28,13 @@ fn spawn_overlay(
 
 fn despawn_overlay(
     mut commands: Commands,
-    state: Res<ConnectionState>,
+    state: Res<State<ConnectionState>>,
     overlay: Query<Entity, With<DisconnectedOverlay>>,
 ) {
     if !state.is_changed() {
         return;
     }
-    if *state != ConnectionState::Connected {
+    if *state.get() != ConnectionState::Connected {
         return;
     }
     for entity in &overlay {

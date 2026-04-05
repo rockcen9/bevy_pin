@@ -3,21 +3,12 @@ use crate::prelude::*;
 use super::ConnectionState;
 
 pub fn plugin(app: &mut App) {
-    app.add_systems(Update, on_reconnect);
+    app.add_systems(OnEnter(ConnectionState::Connected), on_reconnect);
 }
 
 fn on_reconnect(
-    conn: Res<ConnectionState>,
-    mut prev: Local<ConnectionState>,
-    app_state: Res<State<AppState>>,
-    mut next_app_state: ResMut<NextState<AppState>>,
+    app_state: Res<State<SidebarState>>,
+    mut next_app_state: ResMut<NextState<SidebarState>>,
 ) {
-    let was_disconnected = *prev == ConnectionState::Disconnected;
-    let is_connected = *conn == ConnectionState::Connected;
-
-    if conn.is_changed() && was_disconnected && is_connected {
-        next_app_state.set(app_state.get().clone());
-    }
-
-    *prev = conn.clone();
+    next_app_state.set(app_state.get().clone());
 }

@@ -23,7 +23,7 @@ pub fn plugin(app: &mut App) {
     variants::plugin(app);
     discovery::plugin(app);
     poll::plugin(app);
-    app.add_systems(OnExit(AppState::State), clear_discovered_states);
+    app.add_systems(OnExit(SidebarState::State), clear_discovered_states);
 }
 
 fn clear_discovered_states(mut states: ResMut<DiscoveredStates>) {
