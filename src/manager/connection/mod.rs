@@ -1,0 +1,118 @@
+use crate::prelude::*;
+
+pub mod reconnect;
+pub mod ui;
+
+#[derive(Resource, Debug, Clone, PartialEq, Eq, Reflect)]
+pub struct ServerUrl(pub String);
+
+impl Default for ServerUrl {
+    fn default() -> Self {
+        Self("http://127.0.0.1:15702".to_string())
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+use web_sys::{UrlSearchParams, window};
+
+#[cfg(target_arch = "wasm32")]
+pub fn get_url_param(key: &str) -> Option<String> {
+    let window = window()?;
+
+    let search = window.location().search().ok()?;
+
+    let params = UrlSearchParams::new_with_str(&search).ok()?;
+
+    params.get(key)
+}
+fn setup_connection_from_url(mut ui_state: ResMut<ServerUrl>) {
+    let raw_host = {
+        #[cfg(target_arch = "wasm32")]
+        {
+            get_url_param("host").unwrap_or_else(|| "127.0.0.1:15702".to_string())
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            "127.0.0.1:15702".to_string()
+        }
+    };
+
+    let formatted_host = if raw_host.starts_with("http://") || raw_host.starts_with("https://") {
+        raw_host
+    } else {
+        format!("http://{}", raw_host)
+    };
+
+    ui_state.0 = formatted_host;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    println!("Native mode: Final address -> {}", ui_state.0);
+}
+#[derive(Resource, Default, Debug, Clone, PartialEq, Eq, Reflect)]
+pub enum ConnectionState {
+    #[default]
+    Unknown,
+    Connected,
+    Disconnected,
+}
+
+#[derive(Resource)]
+struct HeartbeatTimer(Timer);
+
+#[derive(Resource)]
+struct HeartbeatReceiver(Receiver<bool>);
+
+#[derive(Resource)]
+struct HeartbeatSender(Sender<bool>);
+
+pub fn plugin(app: &mut App) {
+    let (tx, rx) = unbounded();
+    app.init_resource::<ServerUrl>()
+        .init_resource::<ConnectionState>()
+        .insert_resource(HeartbeatTimer(Timer::from_seconds(
+            1.0,
+            TimerMode::Repeating,
+        )))
+        .insert_resource(HeartbeatSender(tx))
+        .insert_resource(HeartbeatReceiver(rx))
+        .add_systems(Update, (send_heartbeat, receive_heartbeat));
+
+    app.add_systems(Startup, setup_connection_from_url);
+    reconnect::plugin(app);
+    ui::plugin(app);
+}
+
+fn send_heartbeat(
+    time: Res<Time>,
+    mut timer: ResMut<HeartbeatTimer>,
+    sender: Res<HeartbeatSender>,
+    server_url: Res<ServerUrl>,
+) {
+    if !timer.0.tick(time.delta()).just_finished() {
+        return;
+    }
+
+    let tx = sender.0.clone();
+    let body = json!({
+        "jsonrpc": "2.0",
+        "id": 0,
+        "method": "world.get"
+    });
+
+    let request = ehttp::Request::post(&server_url.0, serde_json::to_vec(&body).unwrap());
+    ehttp::fetch(request, move |result| {
+        let connected = result.map(|r| r.ok).unwrap_or(false);
+        let _ = tx.send(connected);
+    });
+}
+
+fn receive_heartbeat(receiver: Res<HeartbeatReceiver>, mut state: ResMut<ConnectionState>) {
+    while let Ok(connected) = receiver.0.try_recv() {
+        let next = if connected {
+            ConnectionState::Connected
+        } else {
+            ConnectionState::Disconnected
+        };
+        state.set_if_neq(next);
+    }
+}

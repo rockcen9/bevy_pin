@@ -1,0 +1,49 @@
+[package]
+name = "bevy_pin"
+version = "0.1.0"
+edition = "2024"
+readme = "README.md"
+description = "A remote ECS inspector and monitor for Bevy (WASM-based)."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rockcen9/bevy_pin"
+keywords = ["bevy", "inspector", "reflect"]
+categories = ["development-tools::debugging", "wasm"]
+exclude = ["/assets", "/docs"]
+
+[workspace.dependencies]
+# ─── Engine ───────────────────────────────────────────────────────────────────
+bevy = { rev = "d06aa47744dfa378f2e8a31cd7ff2d59c9afe4b9", git = "https://github.com/bevyengine/bevy", default-features = false }
+
+[dependencies]
+bevy = { workspace = true, features = ["bevy_scene2", "debug", "2d", "ui"] }
+ehttp = "0.7.1"
+serde_json = "1.0"
+crossbeam-channel = "0.5"
+tracing-subscriber = { version = "0.3", features = ["fmt"] }
+tracing = { version = "0.1", features = [
+    "max_level_debug",
+    "release_max_level_warn",
+] }
+web-sys = { version = "0.3", features = [
+    "Window",
+    "Location",
+    "UrlSearchParams",
+] }
+wasm-bindgen = { version = "=0.2.108", optional = true }
+webbrowser = { version = "1" }
+
+[features]
+default = []
+
+backend = []
+state = []
+resource = []
+component = []
+dev = ["bevy/bevy_dev_tools", "bevy/track_location", "bevy/bevy_ui_debug"]
+dev_native = ["dev"]
+web = ["bevy/webgpu", "dep:wasm-bindgen"]
+release = []
+
+
+[dev-dependencies]
+bevy = { workspace = true, features = ["bevy_remote", "2d", "ui"] }

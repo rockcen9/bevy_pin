@@ -1,0 +1,85 @@
+name: Deploy to GitHub Pages (Manual)
+
+on:
+  # This is the only trigger now
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number (e.g., v0.1.0). Leave blank to use Cargo.toml version."
+        required: false
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  # Matches the name in your Cargo.toml
+  cargo_build_binary_name: bevy_pin
+
+jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Determine version number
+        id: version
+        run: |
+          if [ -n '${{ inputs.version }}' ]; then
+            echo "version=${{ inputs.version }}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "version=$(cargo pkgid | sed 's/.*#//')" >> "${GITHUB_OUTPUT}"
+          fi
+
+  build-and-deploy:
+    needs: get-version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          # Using your specific working version
+          toolchain: nightly-2026-01-15
+          targets: wasm32-unknown-unknown
+
+      - name: Restore Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Install Bevy CLI & WASM Tools
+        run: |
+          cargo binstall --version 0.1.0-alpha.2 --locked --no-confirm --force --git='https://github.com/TheBevyFlock/bevy_cli' bevy_cli
+          cargo binstall --locked --no-confirm --force wasm-bindgen-cli wasm-opt
+
+      - name: Build Web Bundle
+        run: |
+          # Uses features: web, backend
+          bevy build --release --yes --features web,backend web --bundle
+          mv target/bevy_web/web-release/${{ env.cargo_build_binary_name }} out_web
+
+      - name: Upload artifact for GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out_web
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
