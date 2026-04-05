@@ -1,18 +1,14 @@
+use bevy::app::ScheduleRunnerPlugin;
 use bevy::prelude::*;
 use bevy::remote::http::Headers;
 use bevy::remote::{RemotePlugin, http::RemoteHttpPlugin};
+use bevy::state::app::StatesPlugin;
 fn main() {
     let mut app = App::new();
-    let default_plugins = DefaultPlugins.build().set(bevy::log::LogPlugin {
-        filter:
-            "bevy_diagnostic::system_information_diagnostics_plugin=warn,bevy_render::renderer=warn"
-                .to_string(),
-        ..default()
-    });
-    #[cfg(feature = "dev")]
-    let default_plugins =
-        default_plugins.disable::<bevy::dev_tools::render_debug::RenderDebugOverlayPlugin>();
-    app.add_plugins(default_plugins);
+    let default_plugins = MinimalPlugins.set(ScheduleRunnerPlugin::run_loop(
+        std::time::Duration::from_millis(16),
+    ));
+    app.add_plugins((default_plugins, StatesPlugin));
     game_manager(&mut app);
     app.run();
 }
@@ -236,6 +232,6 @@ fn spawn_rat_per_sec(
     if timer.just_finished() {
         commands.spawn((Rat::default(),));
         *count += 1;
-        println!("spawned rat {} / 10", *count);
+        println!("spawned rat {} / 20", *count);
     }
 }
