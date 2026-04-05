@@ -8,6 +8,9 @@ Try it live at <https://rockcen9.github.io/bevy_pin/>!
 The default host is `127.0.0.1:15702`.
 You can append `?host=192.168.1.100:15702` to the URL to connect to a completely different address.
 
+> [!WARNING]
+> This project is currently under active development. Features are subject to change.
+
 ## Native Alternative
 
 Run `cargo run` from the project directory. By default, it will keep trying to connect to <http://127.0.0.1:15702>.
