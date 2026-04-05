@@ -45,10 +45,10 @@ fn main() -> AppExit {
             },
             ..default()
         })
-        // .set(AssetPlugin {
-        //     meta_check: AssetMetaCheck::Never,
-        //     ..default()
-        // })
+        .set(AssetPlugin {
+            meta_check: bevy::asset::AssetMetaCheck::Never,
+            ..default()
+        })
         .set(WindowPlugin {
             primary_window: Window {
                 visible: false,
