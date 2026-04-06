@@ -38,7 +38,7 @@ pub enum SidebarState {
 
 #[cfg(feature = "dev")]
 mod debug {
-    use crate::ui::body::SidebarState;
+    use crate::ui_layout::body::SidebarState;
     use bevy::prelude::*;
     use bevy_inspector_egui::quick::StateInspectorPlugin;
     pub fn plugin(app: &mut App) {

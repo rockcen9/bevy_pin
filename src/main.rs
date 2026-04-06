@@ -1,6 +1,6 @@
 mod manager;
 mod prelude;
-mod ui;
+mod ui_layout;
 mod version;
 use crate::prelude::*;
 pub const GAME_WIDTH: f32 = 1920.;
@@ -79,7 +79,7 @@ fn main() -> AppExit {
 
     app.add_systems(Update, show_window_after_warmup);
     app.add_plugins(manager::plugin);
-    app.add_plugins(ui::plugin);
+    app.add_plugins(ui_layout::plugin);
     app.add_plugins((
         EditableTextInputPlugin,
         InputDispatchPlugin,

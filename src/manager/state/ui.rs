@@ -4,7 +4,7 @@ use std::sync::Arc;
 use super::get::{DiscoveredStates, send_next_state};
 use crate::manager::connection::ServerUrl;
 
-use crate::ui::theme::palette::{
+use crate::ui_layout::theme::palette::{
     COLOR_ACTIVE, COLOR_BUTTON_TEXT, COLOR_DISABLED, COLOR_HEADER_BG, COLOR_HOVER, COLOR_INACTIVE,
     COLOR_PANEL_BG, COLOR_TITLE,
 };

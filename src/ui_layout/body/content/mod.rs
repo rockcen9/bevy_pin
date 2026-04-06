@@ -1,10 +1,16 @@
 use crate::{
     manager::{
-        component::ui::component_panels_root, resource::ui::resource_panels_root,
+        component::{
+            component_data, inspector,
+            monitor::ui,
+            query::ui::query_panel,
+            ui::{left_query_root, right_info_root},
+        },
+        resource::ui::resource_panels_root,
         state::ui::state_panels_root,
     },
     prelude::*,
-    ui::theme::palette::COLOR_BG_BASE,
+    ui_layout::theme::palette::COLOR_BG_BASE,
 };
 
 #[derive(Component, Default, Clone, Reflect)]
@@ -47,6 +53,11 @@ fn spawn_state_panel(
         commands.entity(entity).add_child(child);
     }
 }
+
+#[derive(Component, Default, Clone, Reflect)]
+#[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
+pub struct ComponentPanelRoot;
+
 fn spawn_component_panel(
     mut commands: Commands,
     content: Single<(Entity, Option<&Children>), With<ContentPanel>>,
@@ -54,7 +65,29 @@ fn spawn_component_panel(
     let (entity, children) = *content;
     if children.map(|c| c.is_empty()).unwrap_or(true) {
         debug!("Spawning component panels root into ContentPanel");
-        let child = commands.spawn_scene(component_panels_root()).id();
+        let scene = bsn! {
+            #ComponentPanelRoot
+            ComponentPanelRoot
+            Node {
+                flex_grow: 1.0,
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Row,
+            }
+            BackgroundColor(COLOR_BG_BASE)
+            Children [
+                (left_query_root()
+                Children [
+                    query_panel(),
+                    ui::monitor_panel(),
+                ]),
+                (right_info_root()
+                Children [
+                    component_data::component_data_panel(),
+                    inspector::inspector_panel(),
+                ]),
+            ]
+        };
+        let child = commands.spawn_scene(scene).id();
         commands.entity(entity).add_child(child);
     }
 }

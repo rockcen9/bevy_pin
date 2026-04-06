@@ -74,3 +74,7 @@ pub const COLOR_SEPARATOR: Color = Color::srgba(0.28, 0.32, 0.52, 0.45);
 // Scrollbar
 pub const COLOR_SCROLLBAR_TRACK: Color = Color::srgba(0.08, 0.08, 0.14, 0.80);
 pub const COLOR_SCROLLBAR_THUMB: Color = Color::srgba(0.40, 0.45, 0.70, 0.80);
+
+// Entity row selection
+pub const COLOR_ROW_SELECTED: Color = Color::srgba(0.545, 0.361, 0.965, 0.25); // violet 500 @ 25%
+pub const COLOR_ROW_HOVER: Color = Color::srgba(0.545, 0.361, 0.965, 0.10); // violet 500 @ 10%
