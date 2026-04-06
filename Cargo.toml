@@ -63,3 +63,13 @@ release = []
 
 [dev-dependencies]
 bevy = { workspace = true, features = ["bevy_remote", "2d", "ui"] }
+
+[workspace.metadata.release]
+pre-release-hook = [
+    "git",
+    "cliff",
+    "-o",
+    "CHANGELOG.md",
+    "--tag",
+    "{{version}}",
+]
