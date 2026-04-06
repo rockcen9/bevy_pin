@@ -49,10 +49,14 @@ Enable bevy_remote feature for Bevy
 ```
 
 ## States Monitor
-
+```rust
+// register state
+app.init_state::<Screen>();
+app.register_type::<bevy::prelude::State<Screen>>();
+app.register_type::<bevy::prelude::NextState<Screen>>();
+```
 ```rust
 #[derive(States, Copy, Clone, Eq, PartialEq, Hash, Debug, Default, Reflect)]
-// #[states(scoped_entities)]
 pub enum Screen {
     Splash,
     Title,
