@@ -19,7 +19,7 @@ Run `cargo run` from the project directory. By default, it will keep trying to c
 
 ### Component Query
 
-Set up custom component queries using `With<T>` and `Without<T>` filters to track specific entities and see their component changes instantly. (Still a work in progress.)
+Set up custom component queries to track specific entities and see their component changes instantly. You can filter components using either `With<T>` and `Without<T>`, or the shorthand `T` and `!T`. (Still a work in progress.)
 
 ### State Monitor and Switching
 
@@ -49,12 +49,14 @@ Enable bevy_remote feature for Bevy
 ```
 
 ## States Monitor
+
 ```rust
 // register state
 app.init_state::<Screen>();
 app.register_type::<bevy::prelude::State<Screen>>();
 app.register_type::<bevy::prelude::NextState<Screen>>();
 ```
+
 ```rust
 #[derive(States, Copy, Clone, Eq, PartialEq, Hash, Debug, Default, Reflect)]
 pub enum Screen {
