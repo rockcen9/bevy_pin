@@ -15,6 +15,12 @@ You can append `?host=192.168.1.100:15702` to the URL to connect to a completely
 
 Run `cargo run` from the project directory. By default, it will keep trying to connect to <http://127.0.0.1:15702>.
 
+## [Changelog](./CHANGELOG.md)
+
+### [0.1.2] - 2026-04-06
+
+- Component data inspector (Read Only)
+
 ## Features
 
 ### Component Query
@@ -28,8 +34,6 @@ It automatically finds the states in your app and provides visual buttons to eas
 ### Resource Monitor and Modification
 
 Automatically watch resource values update in real-time, and type new values directly into the UI to send them back to the game.
-
-![Resource monitor and modify](./assets/resource_monitor_and_modify.gif)
 
 ## Basic Setup
 
@@ -96,7 +100,7 @@ pub struct Bird {
 
 ## Roadmap
 
-- [ ] Display component data
+- [x] Display component data
 - [ ] Modify component data
 - [ ] Pin component by entity ID
 - [ ] Cache query result
