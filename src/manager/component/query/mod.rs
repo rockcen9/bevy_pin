@@ -16,6 +16,8 @@ fn normalize_part(part: &str) -> String {
     } else if lower.starts_with("with<") && lower.ends_with('>') {
         let inner = &trimmed[5..trimmed.len() - 1];
         format!("With<{}>", inner.trim())
+    } else if trimmed.starts_with('!') {
+        format!("Without<{}>", trimmed[1..].trim())
     } else {
         format!("With<{}>", trimmed)
     }
