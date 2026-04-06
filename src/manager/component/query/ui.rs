@@ -124,17 +124,37 @@ pub fn query_panel() -> impl Scene {
                         }
                         Children [
                             (
-                                Text::new("With<Component>")
+                                Text::new("With<C>")
                                 template(|_| Ok(TextFont::from_font_size(12.0)))
                                 TextColor(COLOR_SYNTAX_WITH)
                             ),
                             (
-                                Text::new(",")
+                                Text::new(" = ")
                                 template(|_| Ok(TextFont::from_font_size(12.0)))
                                 TextColor(COLOR_TITLE)
                             ),
                             (
-                                Text::new("Without<Component>")
+                                Text::new("C")
+                                template(|_| Ok(TextFont::from_font_size(12.0)))
+                                TextColor(COLOR_SYNTAX_WITH)
+                            ),
+                            (
+                                Text::new("  |  ")
+                                template(|_| Ok(TextFont::from_font_size(12.0)))
+                                TextColor(COLOR_TITLE)
+                            ),
+                            (
+                                Text::new("Without<C>")
+                                template(|_| Ok(TextFont::from_font_size(12.0)))
+                                TextColor(COLOR_SYNTAX_WITHOUT)
+                            ),
+                            (
+                                Text::new(" = ")
+                                template(|_| Ok(TextFont::from_font_size(12.0)))
+                                TextColor(COLOR_TITLE)
+                            ),
+                            (
+                                Text::new("!C")
                                 template(|_| Ok(TextFont::from_font_size(12.0)))
                                 TextColor(COLOR_SYNTAX_WITHOUT)
                             ),
