@@ -73,6 +73,9 @@ pub enum Screen {
 
 ```rust
 app.init_resource::<House>();
+```
+
+```rust
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
 pub struct House {
