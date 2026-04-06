@@ -45,7 +45,7 @@ struct ListResources {
     result: Vec<String>,
 }
 
-// --- System ---
+// --- System ----
 
 fn spawn_list_resources_request(mut commands: Commands) {
     let payload = serde_json::to_vec(&serde_json::json!({
