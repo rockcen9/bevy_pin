@@ -100,11 +100,13 @@ pub struct Bird {
 
 ## Roadmap
 
-- [x] Display component data
-- [ ] Modify component data
-- [ ] Pin component by entity ID
-- [ ] Cache query result
-- [ ] Observer debugger
+- [x] View component data
+- [ ] Edit component data
+- [ ] Pick from query history
+- [ ] Add components to entities
+- [ ] Pin Entity by ID
+- [ ] Cache query history for the browser
+- [ ] Debug observers
 
 ## License
 
