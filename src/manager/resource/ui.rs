@@ -54,7 +54,7 @@ pub fn plugin(app: &mut App) {
     app.init_resource::<SpawnedResourcePanels>()
         .init_resource::<SpawnedFieldRows>()
         .add_systems(
-            OnExit(AppState::Resource),
+            OnExit(SidebarState::Resource),
             (clear_spawned_panels, clear_spawned_rows),
         )
         .add_systems(
@@ -193,7 +193,10 @@ fn update_panel_disabled_colors(
     mut headers: Query<(&ResourcePanelHeader, &mut BackgroundColor), Without<ResourcePanelMarker>>,
     rows: Query<(&ResourceFieldRow, &Children)>,
     mut key_texts: Query<&mut TextColor, Without<BackgroundColor>>,
-    mut input_bgs: Query<&mut BackgroundColor, (Without<ResourcePanelMarker>, Without<ResourcePanelHeader>)>,
+    mut input_bgs: Query<
+        &mut BackgroundColor,
+        (Without<ResourcePanelMarker>, Without<ResourcePanelHeader>),
+    >,
 ) {
     if !resources.is_changed() {
         return;
@@ -209,7 +212,11 @@ fn update_panel_disabled_colors(
             marker.0,
             if has_value { "Some" } else { "None" }
         );
-        let target = if has_value { COLOR_PANEL_BG } else { COLOR_PANEL_BG_DISABLED };
+        let target = if has_value {
+            COLOR_PANEL_BG
+        } else {
+            COLOR_PANEL_BG_DISABLED
+        };
         color.set_if_neq(BackgroundColor(target));
     }
     for (header, mut color) in &mut headers {
@@ -218,7 +225,11 @@ fn update_panel_disabled_colors(
             .iter()
             .find(|e| e.type_path == &*header.0)
             .map_or(false, |e| e.value.is_some());
-        let target = if has_value { COLOR_HEADER_BG } else { COLOR_HEADER_BG_DISABLED };
+        let target = if has_value {
+            COLOR_HEADER_BG
+        } else {
+            COLOR_HEADER_BG_DISABLED
+        };
         color.set_if_neq(BackgroundColor(target));
     }
     for (row, children) in &rows {
@@ -230,13 +241,21 @@ fn update_panel_disabled_colors(
 
         if let Some(&key_entity) = children.get(0) {
             if let Ok(mut text_color) = key_texts.get_mut(key_entity) {
-                let target = if has_value { COLOR_LABEL_SECONDARY } else { COLOR_LABEL_DISABLED };
+                let target = if has_value {
+                    COLOR_LABEL_SECONDARY
+                } else {
+                    COLOR_LABEL_DISABLED
+                };
                 text_color.set_if_neq(TextColor(target));
             }
         }
         if let Some(&input_entity) = children.get(1) {
             if let Ok(mut bg) = input_bgs.get_mut(input_entity) {
-                let target = if has_value { COLOR_INPUT_BG } else { COLOR_INPUT_BG_DISABLED };
+                let target = if has_value {
+                    COLOR_INPUT_BG
+                } else {
+                    COLOR_INPUT_BG_DISABLED
+                };
                 bg.set_if_neq(BackgroundColor(target));
             }
         }
@@ -385,7 +404,12 @@ fn submit_field_value(
 
     let json_value = parse_json_value(&raw);
     let field_path = format!(".{}", marker.key);
-    update::mutate_resource_field(marker.type_path.to_string(), field_path, json_value, &server_url.0);
+    update::mutate_resource_field(
+        marker.type_path.to_string(),
+        field_path,
+        json_value,
+        &server_url.0,
+    );
     text_input.clear(&mut font_cx.0, &mut layout_cx.0);
     commands.entity(focused_entity).insert(RefreshOnce);
 }

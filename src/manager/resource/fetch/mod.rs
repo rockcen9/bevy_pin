@@ -1,4 +1,4 @@
-use crate::{manager::AppState, prelude::*};
+use crate::{manager::SidebarState, prelude::*};
 
 mod discovery;
 mod poll;
@@ -13,12 +13,12 @@ pub struct ResourceEntry {
 pub struct DiscoveredResources(pub Vec<ResourceEntry>);
 
 #[derive(Component, Default, Clone)]
-#[require(DespawnOnExit::<AppState>(AppState::Resource), Name::new("ResourcePanelRoot"))]
+#[require(DespawnOnExit::<SidebarState>(SidebarState::Resource), Name::new("ResourcePanelRoot"))]
 pub struct ResourceScreenRoot;
 
 pub fn plugin(app: &mut App) {
     app.init_resource::<DiscoveredResources>()
-        .add_systems(OnExit(AppState::Resource), clear_discovered_resources);
+        .add_systems(OnExit(SidebarState::Resource), clear_discovered_resources);
     discovery::plugin(app);
     poll::plugin(app);
 }

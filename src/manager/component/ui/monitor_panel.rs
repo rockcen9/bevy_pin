@@ -12,7 +12,7 @@ use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::picking::hover::HoverMap;
 
 #[derive(Component, Clone, Default)]
-#[require(DespawnOnExit::<AppState>(AppState::Component))]
+#[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
 struct MonitorPanel;
 
 pub fn monitor_panel() -> impl Scene {
@@ -27,7 +27,7 @@ pub fn monitor_panel() -> impl Scene {
     }
 }
 #[derive(Component, Clone, Default)]
-#[require(DespawnOnExit::<AppState>(AppState::Component))]
+#[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
 struct ComponentContainerRoot;
 #[derive(Component, Clone, Default)]
 struct ComponentListContainer(String);

@@ -48,7 +48,7 @@ fn setup_connection_from_url(mut ui_state: ResMut<ServerUrl>) {
     #[cfg(not(target_arch = "wasm32"))]
     println!("Native mode: Final address -> {}", ui_state.0);
 }
-#[derive(Resource, Default, Debug, Clone, PartialEq, Eq, Reflect)]
+#[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash, Reflect)]
 pub enum ConnectionState {
     #[default]
     Unknown,
@@ -68,7 +68,7 @@ struct HeartbeatSender(Sender<bool>);
 pub fn plugin(app: &mut App) {
     let (tx, rx) = unbounded();
     app.init_resource::<ServerUrl>()
-        .init_resource::<ConnectionState>()
+        .init_state::<ConnectionState>()
         .insert_resource(HeartbeatTimer(Timer::from_seconds(
             1.0,
             TimerMode::Repeating,
@@ -106,13 +106,19 @@ fn send_heartbeat(
     });
 }
 
-fn receive_heartbeat(receiver: Res<HeartbeatReceiver>, mut state: ResMut<ConnectionState>) {
+fn receive_heartbeat(
+    receiver: Res<HeartbeatReceiver>,
+    current: Res<State<ConnectionState>>,
+    mut next_state: ResMut<NextState<ConnectionState>>,
+) {
     while let Ok(connected) = receiver.0.try_recv() {
         let next = if connected {
             ConnectionState::Connected
         } else {
             ConnectionState::Disconnected
         };
-        state.set_if_neq(next);
+        if *current.get() != next {
+            next_state.set(next);
+        }
     }
 }
