@@ -7,7 +7,7 @@ use super::fetch::{DiscoveredResources, ResourceScreenRoot};
 use super::update;
 use crate::manager::connection::ServerUrl;
 use crate::prelude::*;
-use crate::ui::theme::palette::{
+use crate::ui_layout::theme::palette::{
     COLOR_HEADER_BG, COLOR_HEADER_BG_DISABLED, COLOR_INPUT_BG, COLOR_INPUT_BG_DISABLED,
     COLOR_INPUT_BORDER, COLOR_INPUT_TEXT, COLOR_LABEL_DISABLED, COLOR_LABEL_SECONDARY,
     COLOR_PANEL_BG, COLOR_PANEL_BG_DISABLED, COLOR_TITLE,

@@ -1,29 +1,40 @@
-use crate::{manager::component::query::ui::query_panel, prelude::*};
-
-pub mod monitor_panel;
+use crate::prelude::*;
 
 #[derive(Component, Clone, Default)]
 #[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
-struct ComponentPanelsRoot;
+struct LeftQueryRoot;
 
-pub fn plugin(app: &mut App) {
-    monitor_panel::plugin(app);
-}
-pub fn component_panels_root() -> impl Scene {
+#[derive(Component, Clone, Default)]
+#[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
+struct RightInfoPanelRoot;
+pub fn plugin(_app: &mut App) {}
+pub fn left_query_root() -> impl Scene {
     bsn! {
-        #ComponentPanelsRoot
-        ComponentPanelsRoot
+        #LeftQueryRoot
+        LeftQueryRoot
         Node {
-            position_type: PositionType::Absolute,
-            width: Val::Percent(100.0),
+            flex_grow: 1.0,
             height: Val::Percent(100.0),
             flex_direction: FlexDirection::Row,
+            align_items: AlignItems::FlexStart,
             padding: UiRect::all(Val::Px(20.0)),
             column_gap: Val::Px(20.0),
+            overflow: Overflow::scroll_x(),
         }
-        Children [
-            query_panel(),
-            monitor_panel::monitor_panel(),
-        ]
+    }
+}
+pub fn right_info_root() -> impl Scene {
+    bsn! {
+        #RightInfoPanelRoot
+        RightInfoPanelRoot
+        Node {
+            width: Val::Px(640.0),
+            height: Val::Percent(100.0),
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::FlexStart,
+            padding: UiRect::all(Val::Px(20.0)),
+            column_gap: Val::Px(20.0),
+            overflow: Overflow::scroll_x(),
+        }
     }
 }

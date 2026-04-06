@@ -1,6 +1,6 @@
 use super::SidebarState;
 use crate::prelude::*;
-use crate::ui::theme::palette::{
+use crate::ui_layout::theme::palette::{
     COLOR_BG_SURFACE, COLOR_LABEL_SECONDARY, COLOR_MENU_ACTIVE, COLOR_MENU_HOVER,
     COLOR_MENU_NORMAL, COLOR_SEPARATOR,
 };
@@ -128,6 +128,7 @@ fn state_button() -> impl Scene {
     }
 }
 
+#[allow(dead_code)]
 fn remote_rpc_button() -> impl Scene {
     bsn! {
         RemoteRpcButton

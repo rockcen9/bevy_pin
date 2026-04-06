@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::ui::theme::palette::{
+use crate::ui_layout::theme::palette::{
     COLOR_BG_SURFACE, COLOR_LABEL, COLOR_PAUSED, COLOR_PAUSED_HOVER, COLOR_RUNNING,
     COLOR_RUNNING_HOVER, COLOR_SEPARATOR,
 };

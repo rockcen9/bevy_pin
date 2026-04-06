@@ -5,7 +5,7 @@ use bevy::{
 
 use super::{ComponentQueries, QueryEntry};
 use crate::prelude::*;
-use crate::ui::theme::palette::{
+use crate::ui_layout::theme::palette::{
     COLOR_BUTTON_BG, COLOR_BUTTON_HOVER, COLOR_HEADER_BG, COLOR_HINT_BG, COLOR_INPUT_BG,
     COLOR_INPUT_BORDER, COLOR_INPUT_TEXT, COLOR_PANEL_BG, COLOR_SEPARATOR, COLOR_SYNTAX_WITH,
     COLOR_SYNTAX_WITHOUT, COLOR_TITLE,

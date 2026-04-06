@@ -1,11 +1,11 @@
 use super::super::fetch::{DiscoveredComponents, TriggeredDiscoveries};
 use crate::manager::component::query::ComponentQueries;
 use crate::prelude::*;
-use crate::ui::theme::palette::{
+use crate::ui_layout::theme::palette::{
     COLOR_DESTRUCTIVE as COLOR_CLOSE_BG, COLOR_DESTRUCTIVE_HOVER as COLOR_CLOSE_HOVER,
     COLOR_HEADER_BG, COLOR_LABEL as COLOR_INPUT_TEXT, COLOR_LABEL_SECONDARY as COLOR_ENTITY_ID,
-    COLOR_LABEL_TERTIARY as COLOR_VALUE, COLOR_PANEL_BG, COLOR_SCROLLBAR_THUMB,
-    COLOR_SCROLLBAR_TRACK, COLOR_TITLE,
+    COLOR_LABEL_TERTIARY as COLOR_VALUE, COLOR_PANEL_BG, COLOR_ROW_HOVER, COLOR_ROW_SELECTED,
+    COLOR_SCROLLBAR_THUMB, COLOR_SCROLLBAR_TRACK, COLOR_TITLE,
 };
 use bevy::ecs::schedule::common_conditions::resource_changed;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
@@ -26,6 +26,7 @@ pub fn monitor_panel() -> impl Scene {
         }
     }
 }
+
 #[derive(Component, Clone, Default)]
 #[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
 struct ComponentContainerRoot;
@@ -33,10 +34,13 @@ struct ComponentContainerRoot;
 struct ComponentListContainer(String);
 
 #[derive(Component, Clone, Default)]
-struct ComponentEntityRow {
-    entity: u64,
-    query: String,
+pub struct ComponentEntityRow {
+    pub entity: u64,
+    pub query: String,
 }
+
+#[derive(Component)]
+pub struct SelectedRow;
 
 #[derive(Component, Clone, Default)]
 struct CloseButton(String);
@@ -49,6 +53,7 @@ const SCROLL_MAX_HEIGHT: f32 = 300.0;
 pub fn plugin(app: &mut App) {
     app.add_observer(on_monitor_panel_added);
     app.add_observer(on_scrollbar_thumb_added);
+    app.add_observer(on_entity_row_added);
     app.add_systems(
         Update,
         (
@@ -59,6 +64,8 @@ pub fn plugin(app: &mut App) {
             update_close_hover,
             update_scrollbar,
             scroll_on_mouse_wheel,
+            handle_row_selection,
+            update_row_hover,
         ),
     );
 }
@@ -193,22 +200,25 @@ fn get_entity_display_label(raw_id: u64) -> String {
     format!("v{}", display_index)
 }
 fn entity_row(entity_id: u64, query: String, value_str: String) -> impl Scene {
-    // let id_label = format!("#{}", entity_id);
-    let index_lable = get_entity_display_label(entity_id);
+    let index_label = get_entity_display_label(entity_id);
 
     bsn! {
+        Button
         Node {
             flex_direction: FlexDirection::Row,
             column_gap: Val::Px(8.0),
             align_items: AlignItems::Center,
+            padding: UiRect::axes(Val::Px(6.0), Val::Px(3.0)),
+            border_radius: BorderRadius::all(Val::Px(4.0)),
         }
+        BackgroundColor(Color::NONE)
         ComponentEntityRow {
             entity: { entity_id },
             query: { query.clone() },
         }
         Children [
             (
-                Text::new( index_lable.clone() )
+                Text::new( index_label.clone() )
                 template(|_| Ok(TextFont::from_font_size(13.0)))
                 TextColor(COLOR_ENTITY_ID)
             ),
@@ -486,6 +496,66 @@ fn update_scrollbar(
         thumb_node.top = Val::Px(thumb_top.clamp(0.0, SCROLL_MAX_HEIGHT - thumb_h));
     }
 }
+
+fn on_entity_row_added(trigger: On<Add, ComponentEntityRow>, mut commands: Commands) {
+    commands
+        .entity(trigger.entity)
+        .observe(on_row_selected_added)
+        .observe(on_row_selected_removed);
+}
+
+fn on_row_selected_added(
+    trigger: On<Add, SelectedRow>,
+    mut backgrounds: Query<&mut BackgroundColor>,
+) {
+    if let Ok(mut bg) = backgrounds.get_mut(trigger.entity) {
+        bg.set_if_neq(BackgroundColor(COLOR_ROW_SELECTED));
+    }
+}
+
+fn on_row_selected_removed(
+    trigger: On<Remove, SelectedRow>,
+    mut backgrounds: Query<&mut BackgroundColor>,
+) {
+    if let Ok(mut bg) = backgrounds.get_mut(trigger.entity) {
+        bg.set_if_neq(BackgroundColor(Color::NONE));
+    }
+}
+
+fn handle_row_selection(
+    mut commands: Commands,
+    rows: Query<(Entity, &Interaction), (Changed<Interaction>, With<ComponentEntityRow>)>,
+    selected: Query<Entity, With<SelectedRow>>,
+) {
+    for (entity, interaction) in &rows {
+        if *interaction == Interaction::Pressed {
+            for prev in &selected {
+                commands.entity(prev).remove::<SelectedRow>();
+            }
+            commands.entity(entity).insert(SelectedRow);
+        }
+    }
+}
+
+fn update_row_hover(
+    mut rows: Query<
+        (Entity, &Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<ComponentEntityRow>),
+    >,
+    selected: Query<Entity, With<SelectedRow>>,
+) {
+    for (entity, interaction, mut bg) in &mut rows {
+        if selected.contains(entity) {
+            continue;
+        }
+        let new_color = match interaction {
+            Interaction::Hovered => COLOR_ROW_HOVER,
+            _ => Color::NONE,
+        };
+        bg.set_if_neq(BackgroundColor(new_color));
+    }
+}
+
 
 fn value_summary(val: &serde_json::Value) -> String {
     match val {

@@ -1,7 +1,7 @@
 use crate::prelude::*;
-use crate::ui::theme::palette::COLOR_BG_BASE;
+use crate::ui_layout::theme::palette::COLOR_BG_BASE;
 
-use crate::{ui::body::body_panel, ui::header::head_panel};
+use crate::{ui_layout::body::body_panel, ui_layout::header::head_panel};
 pub mod body;
 pub mod debug;
 pub mod header;

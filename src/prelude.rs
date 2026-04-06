@@ -1,5 +1,5 @@
 pub use crate::manager::connection::ConnectionState;
-pub use crate::ui::body::SidebarState;
+pub use crate::ui_layout::body::SidebarState;
 #[allow(unused_imports)]
 pub use crate::{PausableSystems, Pause};
 pub use bevy::ecs::template::template;
