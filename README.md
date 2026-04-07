@@ -127,7 +127,7 @@ pub struct Bird {
 
 - [Flecs Explorer](https://www.flecs.dev/explorer/) - Real-time ECS data visualization and debugging.
 
-- [Bevy CLI](https://github.com/theBevyFlock/bevy_cli) -  Significantly simplifies the WebAssembly (WASM) build workflow.
+- [bevy_cli](https://github.com/theBevyFlock/bevy_cli) -  Significantly simplifies the WebAssembly (WASM) build workflow.
 
 ## Demos
 
