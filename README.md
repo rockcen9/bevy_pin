@@ -31,83 +31,52 @@ Run `cargo run` from the project directory. By default, it will keep trying to c
 
 ## Features
 
-### Entity Query
+- **Entity Query**: Track specific entities and their component changes using `With<T>`/`Without<T>` or shorthand `T`/`!T`.
+- **State Monitor**: Easily switch between app states or trigger a `NextState`.
+- **Resource Monitor**: Watch and edit resource values in real-time.
 
-Set up custom component queries to track specific entities and see their component changes instantly. You can filter components using either `With<T>` and `Without<T>`, or the shorthand `T` and `!T`.
+## Setup & Usage
 
-### State Monitor and Switching
+Enable the `bevy_remote` feature in your `Cargo.toml`:
 
-It automatically finds the states in your app and provides visual buttons to easily switch between them or trigger a `NextState`.
-
-### Resource Monitor and Modification
-
-Automatically watch resource values update in real-time, and type new values directly into the UI to send them back to the game.
-
-## Basic Setup
-
-```rust
-// Enable bevy_remote feature for Bevy
-bevy = { workspace = true, features = ["bevy_remote"]}
+```toml
+bevy = { workspace = true, features = ["bevy_remote"] }
 ```
 
-```rust
-    let cors_headers = Headers::new()
-        .insert(
-            "Access-Control-Allow-Origin",
-            "https://rockcen9.github.io/bevy_pin/",
-        )
-        .insert("Access-Control-Allow-Headers", "Content-Type");
-
-    // add remote plugin
-    app.add_plugins(RemotePlugin::default()); //
-    app.add_plugins(RemoteHttpPlugin::default().with_headers(cors_headers));
-```
-
-## States Monitor
+Add the remote plugins with CORS headers, and register your types for reflection:
 
 ```rust
-// register state
-app.init_state::<Screen>();
-app.register_type::<bevy::prelude::State<Screen>>();
-app.register_type::<bevy::prelude::NextState<Screen>>();
-```
+let cors_headers = Headers::new()
+    .insert("Access-Control-Allow-Origin", "https://rockcen9.github.io/bevy_pin/")
+    .insert("Access-Control-Allow-Headers", "Content-Type");
 
-```rust
-#[derive(States, Copy, Clone, Eq, PartialEq, Hash, Debug, Default, Reflect)]
-pub enum Screen {
-    Splash,
-    Title,
-    Loading,
-    #[default]
-    Gameplay,
-}
+app.add_plugins(RemotePlugin::default())
+   .add_plugins(RemoteHttpPlugin::default().with_headers(cors_headers));
 
-```
+// Register States
+app.init_state::<Screen>()
+   .register_type::<State<Screen>>()
+   .register_type::<NextState<Screen>>();
 
-## Resource Monitor
-
-```rust
-app.init_resource::<House>();
-```
-
-```rust
+// Register Resources
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
-pub struct House {
-    address: String,
-    number: u32,
-}
-```
+pub struct House { /* ... */ }
+app.init_resource::<House>();
 
-## Component Monitor
-
-```rust
+// Register Components
 #[derive(Component, Reflect)]
 #[reflect(Component)]
-pub struct Bird {
-    hobby: String,
-}
+pub struct Bird { /* ... */ }
 ```
+
+## Demos
+
+<p align="center">
+  <img src="./docs/demos/state.gif" width="32%" alt="States" />
+  <img src="./docs/demos/resource.gif" width="32%" alt="Resources" />
+  <img src="./docs/demos/query.gif" width="32%" alt="Components" />
+</p>
 
 ## Roadmap
 
@@ -119,37 +88,16 @@ pub struct Bird {
 - [ ] Cache query history for the browser
 - [ ] Debug observers
 
-## License
-
-- [MIT License](./LICENSE-MIT.md)
-- [Apache License, Version 2.0](./LICENSE-APACHE-2.0.md)
-
-## Credits
-
-- [bevy-inspector-egui](https://github.com/jakobhellermann/bevy-inspector-egui) - A huge inspiration for Bevy inspector tools.
-
-- [Flecs Explorer](https://www.flecs.dev/explorer/) - Real-time ECS data visualization and debugging.
-
-- [bevy_cli](https://github.com/theBevyFlock/bevy_cli) -  Significantly simplifies the WebAssembly build workflow.
-
-## Demos
-
-### States
-
-![States](./docs/demos/state.gif)
-
-### Resources
-
-![Resources](./docs/demos/resource.gif)
-
-### Components
-
-![Components](./docs/demos/query.gif)
-
 ## Compatible Versions
 
-It is compatible with older versions of Bevy as long as there are no breaking changes in the Bevy Remote Protocol (BRP).
+Compatible with Bevy versions without BRP breaking changes:
 
 | Bevy version | `bevy_pin` version |
-|:-------------|:--------------------------|
-| `0.19 dev`       | `0.1`                    |
+|:-------------|:-------------------|
+| `0.19 dev`   | `0.1`              |
+
+## Licenses & Credits
+
+- Covered under [MIT](./LICENSE-MIT.md) or [Apache 2.0](./LICENSE-APACHE-2.0.md).
+- Inspired by [bevy-inspector-egui](https://github.com/jakobhellermann/bevy-inspector-egui) and [Flecs Explorer](https://www.flecs.dev/explorer/).
+- WebAssembly setup simplified by [bevy_cli](https://github.com/theBevyFlock/bevy_cli).
