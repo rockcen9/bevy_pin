@@ -117,7 +117,7 @@ pub fn insert_panel() -> impl Scene {
                     padding: UiRect::axes(Val::Px(12.0), Val::Px(10.0)),
                     border: UiRect::all(Val::Px(1.0)),
                     border_radius: BorderRadius::all(Val::Px(6.0)),
-                    margin: UiRect::axes(Val::Px(10.0), Val::Px(0.0)),
+                    margin: UiRect::all(Val::Px(10.0)),
                 }
                 BackgroundColor(COLOR_HINT_BG)
                 BorderColor::all(COLOR_SEPARATOR)

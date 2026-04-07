@@ -8,8 +8,6 @@ pub struct BodyPanel;
 
 pub fn plugin(app: &mut App) {
     app.add_plugins((sidebar::plugin, content::plugin));
-    #[cfg(feature = "dev")]
-    debug::plugin(app);
 }
 
 pub fn body_panel() -> impl Scene {
@@ -33,22 +31,5 @@ pub enum SidebarState {
     State,
     Resource,
     Component,
-    RemoteRPC,
-}
-
-#[cfg(feature = "dev")]
-mod debug {
-    use crate::ui_layout::body::SidebarState;
-    use bevy::prelude::*;
-    use bevy_inspector_egui::quick::StateInspectorPlugin;
-    pub fn plugin(app: &mut App) {
-        app.add_plugins(StateInspectorPlugin::<SidebarState>::default().run_if(
-            |mut active: Local<bool>, inputs: Res<ButtonInput<KeyCode>>| {
-                if inputs.pressed(KeyCode::SuperLeft) && inputs.just_pressed(KeyCode::Digit3) {
-                    *active = !*active;
-                }
-                *active
-            },
-        ));
-    }
+    NewScene,
 }

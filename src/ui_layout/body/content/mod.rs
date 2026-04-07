@@ -1,12 +1,13 @@
 use crate::{
     manager::{
-        component::{
+        entity_query::{
             component_data,
             entity_list::ui,
             inspector,
             query::{history::query_history_panel, insert::insert_panel, query_panel_root},
             ui::{left_query_root, right_info_root},
         },
+        new_scene::{NewScenePanelRoot, spawned::spawned_panel, insert::spawn_entity_panel},
         resource::ui::resource_panels_root,
         state::ui::state_panels_root,
     },
@@ -29,6 +30,10 @@ pub fn plugin(app: &mut App) {
     app.add_systems(
         Update,
         spawn_component_panel.run_if(in_state(SidebarState::Component)),
+    );
+    app.add_systems(
+        Update,
+        spawn_new_scene_panel.run_if(in_state(SidebarState::NewScene)),
     );
 }
 pub fn content_panel() -> impl Scene {
@@ -106,6 +111,42 @@ fn spawn_resource_panel(
     if children.map(|c| c.is_empty()).unwrap_or(true) {
         debug!("Spawning resource panels root into ContentPanel");
         let child = commands.spawn_scene(resource_panels_root()).id();
+        commands.entity(entity).add_child(child);
+    }
+}
+
+fn spawn_new_scene_panel(
+    mut commands: Commands,
+    content: Single<(Entity, Option<&Children>), With<ContentPanel>>,
+) {
+    let (entity, children) = *content;
+    if children.map(|c| c.is_empty()).unwrap_or(true) {
+        debug!("Spawning new scene panel into ContentPanel");
+        let scene = bsn! {
+            #NewScenePanelRoot
+            NewScenePanelRoot
+            Node {
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::FlexStart,
+                padding: UiRect::all(Val::Px(20.0)),
+                column_gap: Val::Px(12.0),
+            }
+            Children [
+                (
+                    Node {
+                        flex_direction: FlexDirection::Column,
+                        row_gap: Val::Px(12.0),
+                    }
+                    Children [
+                        spawn_entity_panel(),
+                        spawned_panel(),
+                    ]
+                ),
+                component_data::component_data_panel(),
+                inspector::inspector_panel(),
+            ]
+        };
+        let child = commands.spawn_scene(scene).id();
         commands.entity(entity).add_child(child);
     }
 }

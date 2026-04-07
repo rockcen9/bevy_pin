@@ -7,6 +7,11 @@ struct GetResourceResponse {
     result: serde_json::Value,
 }
 
+#[derive(Deserialize)]
+pub struct InsertResourceResponse {
+    pub result: serde_json::Value,
+}
+
 #[derive(Component)]
 struct PollContext(String);
 
@@ -15,6 +20,7 @@ struct PollTimer(Timer);
 
 pub(super) fn plugin(app: &mut App) {
     app.add_plugins(BrpEndpointPlugin::<GetResourceResponse>::default())
+        .add_plugins(BrpEndpointPlugin::<InsertResourceResponse>::default())
         .insert_resource(PollTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
         .add_systems(Update, poll_states.run_if(in_state(Pause(false))));
 }
@@ -77,29 +83,3 @@ fn poll_states(
     }
 }
 
-pub fn send_next_state(variant: String, next_state_resource: Option<String>, url: &str) {
-    let Some(path) = next_state_resource else {
-        error!("NextState resource not found — cannot switch state");
-        return;
-    };
-
-    let body = json!({
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "world.insert_resources",
-        "params": {
-            "resource": path,
-            "value": { "Pending": variant }
-        }
-    });
-
-    let request = ehttp::Request::post(url, serde_json::to_vec(&body).unwrap());
-    ehttp::fetch(request, move |result| match result {
-        Ok(r) => {
-            if let Some(body) = r.text() {
-                info!("State switch response: {}", body);
-            }
-        }
-        Err(e) => error!("State switch failed: {}", e),
-    });
-}

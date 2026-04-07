@@ -1,6 +1,7 @@
 mod manager;
 mod prelude;
 mod ui_layout;
+mod utils;
 mod version;
 use crate::prelude::*;
 pub const GAME_WIDTH: f32 = 1920.;
@@ -29,11 +30,13 @@ fn main() -> AppExit {
                     "bevy_pin::manager::resource::set=warn,",
                     "bevy_pin::manager::resource::ui=warn,",
                     "bevy_pin::manager::component::get=warn,",
-                    "bevy_pin::manager::component::query::history=debug,",
-                    "bevy_pin::manager::component::query::insert=debug,",
+                    "bevy_pin::manager::component::query::history=warn,",
+                    "bevy_pin::manager::component::query::insert=warn,",
                     "bevy_pin::manager::component::query=warn,",
                     "bevy_pin::manager::component::entity_list::ui=warn,",
                     "bevy_pin::manager::connection::reconnect=warn,",
+                    "bevy_pin::manager::new_scene::spawned=warn,",
+                    "bevy_pin::manager::entity_query::component_data=warn,",
                 ),
                 default = bevy::log::DEFAULT_FILTER
             ),
@@ -69,12 +72,10 @@ fn main() -> AppExit {
     let default_plugins =
         default_plugins.disable::<bevy::dev_tools::render_debug::RenderDebugOverlayPlugin>();
 
+    #[cfg(feature = "dev_native")]
+    dogfooding::plugin(&mut app);
     app.add_plugins(default_plugins);
 
-    #[cfg(feature = "dev")]
-    if !app.is_plugin_added::<bevy_inspector_egui::bevy_egui::EguiPlugin>() {
-        app.add_plugins(bevy_inspector_egui::bevy_egui::EguiPlugin::default());
-    }
     // Set up the `Pause` state.
     app.init_state::<Pause>();
     app.configure_sets(Update, PausableSystems.run_if(in_state(Pause(false))));
@@ -108,3 +109,28 @@ pub struct Pause(pub bool);
 /// A system set for systems that shouldn't run while the game is paused.
 #[derive(SystemSet, Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct PausableSystems;
+
+#[cfg(feature = "dev_native")]
+mod dogfooding {
+    use bevy::{
+        prelude::*,
+        remote::{
+            RemotePlugin,
+            http::{Headers, RemoteHttpPlugin},
+        },
+    };
+
+    pub fn plugin(app: &mut App) {
+        let cors_headers = Headers::new()
+            .insert("Access-Control-Allow-Origin", "https://rockcen9.github.io")
+            .insert("Access-Control-Allow-Headers", "Content-Type");
+
+        // add remote plugin
+        app.add_plugins(RemotePlugin::default()); //
+        app.add_plugins(
+            RemoteHttpPlugin::default()
+                .with_headers(cors_headers)
+                .with_port(15703),
+        );
+    }
+}

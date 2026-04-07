@@ -46,6 +46,7 @@ pub struct TimeoutError;
 ///     .observe(|trigger: On<Add, TimeoutError>, ..| { .. });
 /// ```
 #[derive(Component)]
+#[component(storage = "SparseSet")]
 #[require(RequestTimeout::new(Duration::from_secs(5)))]
 pub struct BrpRequest<T: DeserializeOwned + Send + Sync + 'static> {
     pub url: String,
