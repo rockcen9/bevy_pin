@@ -1,11 +1,16 @@
+use bevy::{
+    input_focus::{InputFocus, tab_navigation::TabIndex},
+    text::{EditableText, FontCx, LayoutCx, TextCursorStyle},
+};
+
 use crate::manager::component::component_data::{
     ComponentDataState, ComponentNameRow, SelectedComponent,
 };
 use crate::manager::connection::ServerUrl;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
-    COLOR_HEADER_BG, COLOR_LABEL as COLOR_FIELD_KEY, COLOR_LABEL_TERTIARY as COLOR_FIELD_VALUE,
-    COLOR_PANEL_BG, COLOR_TITLE,
+    COLOR_HEADER_BG, COLOR_INPUT_BG, COLOR_INPUT_BORDER, COLOR_INPUT_TEXT,
+    COLOR_LABEL as COLOR_FIELD_KEY, COLOR_PANEL_BG, COLOR_TITLE,
 };
 
 // ── BRP ────────────────────────────────────────────────────────────────────
@@ -30,6 +35,9 @@ struct InspectorState {
     fields: Vec<(String, String)>, // (field_name, value_string)
 }
 
+#[derive(Resource)]
+struct InspectorPollTimer(Timer);
+
 // ── UI Components ──────────────────────────────────────────────────────────
 
 #[derive(Component, Clone, Default)]
@@ -38,6 +46,16 @@ struct InspectorPanel;
 
 #[derive(Component, Clone, Default)]
 struct InspectorContent;
+
+/// Marker on the editable input so we know which entity/component/field to mutate on Enter.
+#[derive(Component, Clone, Default)]
+struct EditableInspectorField {
+    field_key: String,
+}
+
+/// Inserted after submit so the field refreshes from state even while still focused.
+#[derive(Component)]
+struct RefreshOnce;
 
 pub fn inspector_panel() -> impl Scene {
     bsn! {
@@ -77,11 +95,18 @@ pub fn inspector_panel() -> impl Scene {
 pub fn plugin(app: &mut App) {
     app.add_plugins(BrpEndpointPlugin::<GetComponentResponse>::default())
         .init_resource::<InspectorState>()
+        .insert_resource(InspectorPollTimer(Timer::from_seconds(
+            1.0,
+            TimerMode::Repeating,
+        )))
         .add_systems(
             Update,
             (
                 fetch_on_component_selection,
+                poll_inspector_fields,
                 render_inspector.run_if(resource_changed::<InspectorState>),
+                update_inspector_field_values.run_if(resource_changed::<InspectorState>),
+                submit_inspector_field,
             ),
         );
 }
@@ -157,20 +182,77 @@ fn fetch_on_component_selection(
                 if let Ok(data) = &response.data {
                     let raw = &data.result["components"][&ctx.type_path];
                     let val = unwrap_newtype(raw);
-                    state.fields = match val {
-                        serde_json::Value::Object(map) => map
-                            .iter()
-                            .map(|(k, v)| (k.clone(), value_to_string(v)))
-                            .collect(),
-                        serde_json::Value::Array(arr) => decompose_affine(arr)
-                            .unwrap_or_else(|| {
-                                vec![("value".to_string(), value_to_string(val))]
-                            }),
-                        other if !other.is_null() => {
-                            vec![("value".to_string(), value_to_string(other))]
-                        }
-                        _ => vec![],
-                    };
+                    state.fields = parse_fields(val);
+                }
+
+                commands.entity(ecs_entity).despawn();
+            },
+        )
+        .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+            commands.entity(trigger.entity).despawn();
+        });
+}
+
+fn poll_inspector_fields(
+    time: Res<Time>,
+    mut timer: ResMut<InspectorPollTimer>,
+    state: Res<InspectorState>,
+    server_url: Res<ServerUrl>,
+    mut commands: Commands,
+) {
+    if !timer.0.tick(time.delta()).just_finished() {
+        return;
+    }
+
+    let (Some(entity_id), Some(type_path)) = (state.entity_id, state.type_path.clone()) else {
+        return;
+    };
+
+    let payload = serde_json::to_vec(&json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "world.get_components",
+        "params": {
+            "entity": entity_id,
+            "components": [type_path],
+            "strict": false
+        }
+    }))
+    .unwrap();
+
+    commands
+        .spawn((
+            BrpRequest::<GetComponentResponse>::new(&server_url.0, payload),
+            GetComponentCtx {
+                entity_id,
+                type_path,
+            },
+        ))
+        .observe(
+            |trigger: On<Add, BrpResponse<GetComponentResponse>>,
+             q: Query<(&BrpResponse<GetComponentResponse>, &GetComponentCtx)>,
+             mut state: ResMut<InspectorState>,
+             mut commands: Commands| {
+                let ecs_entity = trigger.entity;
+                let Ok((response, ctx)) = q.get(ecs_entity) else {
+                    commands.entity(ecs_entity).despawn();
+                    return;
+                };
+
+                if state.entity_id != Some(ctx.entity_id)
+                    || state.type_path.as_deref() != Some(&ctx.type_path)
+                {
+                    commands.entity(ecs_entity).despawn();
+                    return;
+                }
+
+                if let Ok(data) = &response.data {
+                    let raw = &data.result["components"][&ctx.type_path];
+                    let val = unwrap_newtype(raw);
+                    let new_fields = parse_fields(val);
+                    if new_fields != state.fields {
+                        state.fields = new_fields;
+                    }
                 }
 
                 commands.entity(ecs_entity).despawn();
@@ -201,7 +283,7 @@ fn render_inspector(
             .spawn((
                 Text::new("Select a component"),
                 TextFont::from_font_size(13.0),
-                TextColor(COLOR_FIELD_VALUE),
+                TextColor(COLOR_INPUT_TEXT),
             ))
             .id();
         commands.entity(content_entity).add_child(placeholder);
@@ -213,7 +295,7 @@ fn render_inspector(
             .spawn((
                 Text::new("Loading..."),
                 TextFont::from_font_size(13.0),
-                TextColor(COLOR_FIELD_VALUE),
+                TextColor(COLOR_INPUT_TEXT),
             ))
             .id();
         commands.entity(content_entity).add_child(loading);
@@ -224,10 +306,12 @@ fn render_inspector(
         let row = commands
             .spawn(Node {
                 flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
                 column_gap: Val::Px(8.0),
                 ..default()
             })
             .id();
+
         let key = commands
             .spawn((
                 Text::new(field.clone()),
@@ -235,15 +319,171 @@ fn render_inspector(
                 TextColor(COLOR_FIELD_KEY),
             ))
             .id();
-        let val = commands
+
+        let display_val = value.clone();
+        let field_key = field.clone();
+        let input = commands
             .spawn((
-                Text::new(value.clone()),
-                TextFont::from_font_size(13.0),
-                TextColor(COLOR_FIELD_VALUE),
+                Node {
+                    width: Val::Px(160.0),
+                    border: UiRect::all(Val::Px(1.0)),
+                    padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
+                    border_radius: BorderRadius::all(Val::Px(4.0)),
+                    ..default()
+                },
+                BorderColor::all(COLOR_INPUT_BORDER),
+                BackgroundColor(COLOR_INPUT_BG),
+                EditableInspectorField { field_key },
+                {
+                    let mut text_input = EditableText {
+                        max_characters: Some(128),
+                        ..default()
+                    };
+                    text_input.editor.set_text(&display_val);
+                    text_input
+                },
+                TextFont {
+                    font_size: FontSize::Px(13.0),
+                    ..default()
+                },
+                TextColor(COLOR_INPUT_TEXT),
+                TextCursorStyle::default(),
+                TabIndex(1),
             ))
             .id();
-        commands.entity(row).add_children(&[key, val]);
+
+        commands.entity(row).add_children(&[key, input]);
         commands.entity(content_entity).add_child(row);
+    }
+}
+
+fn update_inspector_field_values(
+    mut commands: Commands,
+    state: Res<InspectorState>,
+    input_focus: Res<InputFocus>,
+    inputs: Query<(Entity, &EditableInspectorField)>,
+    mut editable_texts: Query<&mut EditableText>,
+    refresh_once: Query<Entity, With<RefreshOnce>>,
+) {
+    for (entity, marker) in &inputs {
+        let Some(value) = state.fields.iter().find(|(k, _)| k == &marker.field_key).map(|(_, v)| v) else {
+            continue;
+        };
+
+        let has_refresh = refresh_once.contains(entity);
+        if input_focus.get() == Some(entity) && !has_refresh {
+            continue;
+        }
+
+        if let Ok(mut editable) = editable_texts.get_mut(entity) {
+            editable.editor.set_text(value);
+        }
+
+        if has_refresh {
+            commands.entity(entity).remove::<RefreshOnce>();
+        }
+    }
+}
+
+fn submit_inspector_field(
+    mut commands: Commands,
+    input_focus: Res<InputFocus>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut text_inputs: Query<(&mut EditableText, &EditableInspectorField)>,
+    mut font_cx: ResMut<FontCx>,
+    mut layout_cx: ResMut<LayoutCx>,
+    state: Res<InspectorState>,
+    server_url: Res<ServerUrl>,
+) {
+    if !keyboard_input.just_pressed(KeyCode::Enter) {
+        return;
+    }
+    let Some(focused_entity) = input_focus.get() else {
+        return;
+    };
+    let Ok((mut text_input, marker)) = text_inputs.get_mut(focused_entity) else {
+        return;
+    };
+    let (Some(entity_id), Some(type_path)) = (state.entity_id, state.type_path.as_ref()) else {
+        return;
+    };
+
+    let raw = text_input.value().to_string();
+    if raw.is_empty() {
+        return;
+    }
+
+    let json_value = parse_json_value(&raw);
+    let field_path = if marker.field_key == "value" {
+        String::new()
+    } else {
+        format!(".{}", marker.field_key)
+    };
+
+    mutate_component_field(entity_id, type_path.clone(), field_path, json_value, &server_url.0);
+
+    text_input.clear(&mut font_cx.0, &mut layout_cx.0);
+    commands.entity(focused_entity).insert(RefreshOnce);
+}
+
+// ── BRP helpers ────────────────────────────────────────────────────────────
+
+fn mutate_component_field(
+    entity_id: u64,
+    type_path: String,
+    field_path: String,
+    value: serde_json::Value,
+    url: &str,
+) {
+    let body = json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "world.mutate_components",
+        "params": {
+            "entity": entity_id,
+            "component": type_path,
+            "path": field_path,
+            "value": value
+        }
+    });
+
+    let request = ehttp::Request::post(url, serde_json::to_vec(&body).unwrap());
+    ehttp::fetch(request, move |result| match result {
+        Ok(r) => {
+            if let Some(body) = r.text() {
+                info!("mutate_component_field response: {}", body);
+            }
+        }
+        Err(e) => error!("mutate_component_field failed: {}", e),
+    });
+}
+
+// ── Value helpers ──────────────────────────────────────────────────────────
+
+const TRANSFORM_FIELD_ORDER: &[&str] = &["translation", "rotation", "scale"];
+
+fn parse_fields(val: &serde_json::Value) -> Vec<(String, String)> {
+    match val {
+        serde_json::Value::Object(map) => {
+            let mut fields: Vec<(String, String)> = map
+                .iter()
+                .map(|(k, v)| (k.clone(), value_to_string(v)))
+                .collect();
+            let keys: Vec<&str> = fields.iter().map(|(k, _)| k.as_str()).collect();
+            if TRANSFORM_FIELD_ORDER.iter().all(|f| keys.contains(f)) {
+                fields.sort_by_key(|(k, _)| {
+                    TRANSFORM_FIELD_ORDER
+                        .iter()
+                        .position(|f| *f == k.as_str())
+                        .unwrap_or(usize::MAX)
+                });
+            }
+            fields
+        }
+        serde_json::Value::Array(arr) => decompose_affine(arr)
+            .unwrap_or_else(|| vec![("value".to_string(), value_to_string(val))]),
+        other if !other.is_null() => vec![("value".to_string(), value_to_string(other))],
+        _ => vec![],
     }
 }
 
@@ -290,9 +530,9 @@ fn decompose_affine(arr: &[serde_json::Value]) -> Option<Vec<(String, String)>> 
     };
 
     Some(vec![
+        ("translation".to_string(), format!("[{:.1},{:.1},{:.1}]", tx, ty, tz)),
         ("rotation".to_string(), format!("[{:.1},{:.1},{:.1},{:.1}]", qx, qy, qz, qw)),
         ("scale".to_string(),    format!("[{:.1},{:.1},{:.1}]", sx, sy, sz)),
-        ("translation".to_string(), format!("[{:.1},{:.1},{:.1}]", tx, ty, tz)),
     ])
 }
 
@@ -322,4 +562,36 @@ fn value_to_string(val: &serde_json::Value) -> String {
         serde_json::Value::Null => "null".to_string(),
         other => other.to_string(),
     }
+}
+
+fn normalize_bare_decimals(s: &str) -> String {
+    let mut result = String::with_capacity(s.len() + 4);
+    let chars: Vec<char> = s.chars().collect();
+    for i in 0..chars.len() {
+        result.push(chars[i]);
+        if chars[i] == '.' {
+            match chars.get(i + 1).copied() {
+                Some(c) if c.is_ascii_digit() => {}
+                _ => result.push('0'),
+            }
+        }
+    }
+    result
+}
+
+fn parse_json_value(s: &str) -> serde_json::Value {
+    if let Ok(n) = s.parse::<i64>() {
+        return json!(n);
+    }
+    if let Ok(n) = s.parse::<f64>() {
+        return json!(n);
+    }
+    if let Ok(b) = s.parse::<bool>() {
+        return json!(b);
+    }
+    let normalized = normalize_bare_decimals(s);
+    if let Ok(v) = serde_json::from_str::<serde_json::Value>(&normalized) {
+        return v;
+    }
+    json!(s)
 }

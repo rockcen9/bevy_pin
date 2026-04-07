@@ -78,3 +78,7 @@ pub const COLOR_SCROLLBAR_THUMB: Color = Color::srgba(0.40, 0.45, 0.70, 0.80);
 // Entity row selection
 pub const COLOR_ROW_SELECTED: Color = Color::srgba(0.545, 0.361, 0.965, 0.25); // violet 500 @ 25%
 pub const COLOR_ROW_HOVER: Color = Color::srgba(0.545, 0.361, 0.965, 0.10); // violet 500 @ 10%
+
+// Overlay (disconnected / blocking screens)
+pub const COLOR_OVERLAY_BG: Color = Color::srgba(0.0, 0.0, 0.0, 0.55);
+pub const COLOR_OVERLAY_TEXT: Color = Color::srgba(0.75, 0.75, 0.75, 1.0);

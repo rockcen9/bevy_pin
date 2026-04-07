@@ -2,7 +2,7 @@ use crate::{
     manager::{
         component::{
             component_data, inspector,
-            monitor::ui,
+            entity_list::ui,
             query::ui::query_panel,
             ui::{left_query_root, right_info_root},
         },
@@ -78,7 +78,7 @@ fn spawn_component_panel(
                 (left_query_root()
                 Children [
                     query_panel(),
-                    ui::monitor_panel(),
+                    ui::entity_list_panel(),
                 ]),
                 (right_info_root()
                 Children [

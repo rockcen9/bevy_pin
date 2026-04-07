@@ -13,12 +13,12 @@ use bevy::picking::hover::HoverMap;
 
 #[derive(Component, Clone, Default)]
 #[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
-struct MonitorPanel;
+struct EntityListPanel;
 
-pub fn monitor_panel() -> impl Scene {
+pub fn entity_list_panel() -> impl Scene {
     bsn! {
-        #MonitorPanel
-        MonitorPanel
+        #EntityListPanel
+        EntityListPanel
         Node {
             flex_direction: FlexDirection::Column,
             row_gap: Val::Px(10.0),
@@ -51,7 +51,7 @@ struct ScrollbarThumb(String);
 const SCROLL_MAX_HEIGHT: f32 = 300.0;
 
 pub fn plugin(app: &mut App) {
-    app.add_observer(on_monitor_panel_added);
+    app.add_observer(on_entity_list_panel_added);
     app.add_observer(on_scrollbar_thumb_added);
     app.add_observer(on_entity_row_added);
     app.add_systems(
@@ -231,15 +231,15 @@ fn entity_row(entity_id: u64, query: String, value_str: String) -> impl Scene {
     }
 }
 
-fn on_monitor_panel_added(
-    _trigger: On<Add, MonitorPanel>,
+fn on_entity_list_panel_added(
+    _trigger: On<Add, EntityListPanel>,
     commands: Commands,
     queries: Res<ComponentQueries>,
-    root: Query<Entity, With<MonitorPanel>>,
+    root: Query<Entity, With<EntityListPanel>>,
     containers: Query<&ComponentListContainer>,
 ) {
     debug!(
-        "MonitorPanel added — spawning panels for {} queries",
+        "EntityListPanel added — spawning panels for {} queries",
         queries.0.len()
     );
     spawn_panels_inner(commands, queries, root, containers);
@@ -248,7 +248,7 @@ fn on_monitor_panel_added(
 fn spawn_panels(
     commands: Commands,
     queries: Res<ComponentQueries>,
-    root: Query<Entity, With<MonitorPanel>>,
+    root: Query<Entity, With<EntityListPanel>>,
     containers: Query<&ComponentListContainer>,
 ) {
     spawn_panels_inner(commands, queries, root, containers);
@@ -257,7 +257,7 @@ fn spawn_panels(
 fn spawn_panels_inner(
     mut commands: Commands,
     queries: Res<ComponentQueries>,
-    root: Query<Entity, With<MonitorPanel>>,
+    root: Query<Entity, With<EntityListPanel>>,
     containers: Query<&ComponentListContainer>,
 ) {
     let Ok(root_entity) = root.single() else {
@@ -297,11 +297,13 @@ fn spawn_entity_rows(
         components.0.len()
     );
 
+    let existing: HashSet<(u64, &str)> = rows
+        .iter()
+        .map(|r| (r.entity, r.query.as_str()))
+        .collect();
+
     for entry in &components.0 {
-        if rows
-            .iter()
-            .any(|r| r.entity == entry.entity && r.query == entry.query)
-        {
+        if existing.contains(&(entry.entity, entry.query.as_str())) {
             continue;
         }
 
@@ -350,7 +352,7 @@ fn update_entity_rows(
             continue;
         };
         let new_val = entry.value.as_ref().map(value_summary).unwrap_or_default();
-        text.0 = new_val;
+        text.set_if_neq(Text(new_val));
     }
 }
 
