@@ -1,4 +1,5 @@
 # Bevy Pin
+### A web-based remote inspector built with Bevy 🕊️
 
 This is a web based remote inspector for the Bevy engine. It connects to your game utilizing the Bevy Remote Protocol.
 
