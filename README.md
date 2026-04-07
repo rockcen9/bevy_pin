@@ -1,10 +1,10 @@
 # Bevy Pin
 ### A web-based remote inspector built with Bevy 🕊️
 
-- This is a remote inspector that works with the official Bevy Remote Protocol.
 - Pin the data to keep them in view for debugging.
 - Zero External Dependencies: You don't need to add any third-party crates to your project.
-
+- It works with the official Bevy Remote Protocol.
+  
 Example setup in [./examples/demo_game.rs](./examples/demo_game.rs)
 
 Try it live at <https://rockcen9.github.io/bevy_pin/>!
@@ -40,7 +40,10 @@ Automatically watch resource values update in real-time, and type new values dir
 
 ## Basic Setup
 
-Enable bevy_remote feature for Bevy
+```rust
+// Enable bevy_remote feature for Bevy
+bevy = { workspace = true, features = ["bevy_remote"]}
+```
 
 ```rust
     let cors_headers = Headers::new()
