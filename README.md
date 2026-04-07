@@ -96,8 +96,15 @@ Compatible with Bevy versions without BRP breaking changes:
 |:-------------|:-------------------|
 | `0.19 dev`   | `0.1`              |
 
-## Licenses & Credits
+## License
 
-- Covered under [MIT](./LICENSE-MIT.md) or [Apache 2.0](./LICENSE-APACHE-2.0.md).
-- Inspired by [bevy-inspector-egui](https://github.com/jakobhellermann/bevy-inspector-egui) and [Flecs Explorer](https://www.flecs.dev/explorer/).
-- WebAssembly setup simplified by [bevy_cli](https://github.com/theBevyFlock/bevy_cli).
+- [MIT License](./LICENSE-MIT.md)
+- [Apache License, Version 2.0](./LICENSE-APACHE-2.0.md)
+
+## Credits
+
+- [bevy-inspector-egui](https://github.com/jakobhellermann/bevy-inspector-egui) - A huge inspiration for Bevy inspector tools.
+
+- [Flecs Explorer](https://www.flecs.dev/explorer/) - Real-time ECS data visualization and debugging.
+
+- [bevy_cli](https://github.com/theBevyFlock/bevy_cli) -  Significantly simplifies the WebAssembly build workflow.
