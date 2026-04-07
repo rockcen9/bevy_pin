@@ -398,6 +398,7 @@ fn submit_field_value(
         field_path,
         json_value,
         &server_url.0,
+        &mut commands,
     );
     text_input.clear(&mut font_cx.0, &mut layout_cx.0);
     commands.entity(focused_entity).insert(RefreshOnce);

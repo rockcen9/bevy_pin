@@ -1,5 +1,5 @@
 use super::super::fetch::{DiscoveredComponents, TriggeredDiscoveries};
-use crate::manager::component::query::ComponentQueries;
+use crate::manager::entity_query::query::ComponentQueries;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
     COLOR_HEADER_BG, COLOR_LABEL_SECONDARY as COLOR_ENTITY_ID, COLOR_LABEL_TERTIARY as COLOR_VALUE,
@@ -95,18 +95,9 @@ fn component_panel(title: String) -> impl Scene {
     }
 }
 
-fn get_entity_display_label(raw_id: u64) -> String {
-    let entity_index = raw_id as u32;
-    let display_index = if entity_index > 4_000_000_000 {
-        u32::MAX - entity_index
-    } else {
-        entity_index
-    };
-    format!("v{}", display_index)
-}
 
 fn entity_row(entity_id: u64, query: String, value_str: String) -> impl Scene {
-    let index_label = get_entity_display_label(entity_id);
+    let index_label = crate::utils::entity_display_label(entity_id);
     bsn! {
         Button
         Node {

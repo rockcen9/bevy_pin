@@ -4,7 +4,7 @@ mod discovery;
 mod poll;
 mod variants;
 
-pub use poll::send_next_state;
+pub use poll::InsertResourceResponse;
 
 pub struct StateEntry {
     pub label: String,

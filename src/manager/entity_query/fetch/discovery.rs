@@ -1,5 +1,5 @@
 use super::{ComponentEntry, DiscoveredComponents, TriggeredDiscoveries};
-use crate::manager::component::query::ComponentQueries;
+use crate::manager::entity_query::query::ComponentQueries;
 use crate::manager::connection::ServerUrl;
 use crate::prelude::*;
 

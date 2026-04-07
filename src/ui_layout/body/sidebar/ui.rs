@@ -18,7 +18,7 @@ struct ResourceButton;
 struct StateButton;
 
 #[derive(Component, Default, Clone)]
-struct RemoteRpcButton;
+struct NewScene;
 
 #[derive(Component, Default, Clone)]
 struct GithubButton;
@@ -31,7 +31,7 @@ pub fn plugin(app: &mut App) {
             on_component_button,
             on_resource_button,
             on_state_button,
-            on_remote_rpc_button,
+            on_new_scene_button,
             on_github_button,
         )
             .run_if(in_state(ConnectionState::Connected)),
@@ -52,10 +52,10 @@ pub fn menu_panel() -> impl Scene {
         BackgroundColor(COLOR_BG_SURFACE)
         BorderColor::all(COLOR_SEPARATOR)
         Children [
-            component_button(),
+            entity_query_button(),
             resource_button(),
             state_button(),
-            // remote_rpc_button(),
+            new_scene_button(),
             (
                 Node {
                     flex_grow: 1.0,
@@ -65,7 +65,7 @@ pub fn menu_panel() -> impl Scene {
     }
 }
 
-fn component_button() -> impl Scene {
+fn entity_query_button() -> impl Scene {
     bsn! {
         ComponentButton
         Button
@@ -79,7 +79,7 @@ fn component_button() -> impl Scene {
         }
         BackgroundColor(COLOR_MENU_NORMAL)
         Children [(
-            Text("Components")
+            Text("Entity Query")
             template(|_| Ok(TextFont::from_font_size(15.0)))
             TextColor(COLOR_LABEL_SECONDARY)
         )]
@@ -128,10 +128,9 @@ fn state_button() -> impl Scene {
     }
 }
 
-#[allow(dead_code)]
-fn remote_rpc_button() -> impl Scene {
+fn new_scene_button() -> impl Scene {
     bsn! {
-        RemoteRpcButton
+        NewScene
         Button
         Node {
             width: Val::Percent(100.0),
@@ -143,7 +142,7 @@ fn remote_rpc_button() -> impl Scene {
         }
         BackgroundColor(COLOR_MENU_NORMAL)
         Children [(
-            Text("Remote RPC")
+            Text("New Scene")
             template(|_| Ok(TextFont::from_font_size(15.0)))
             TextColor(COLOR_LABEL_SECONDARY)
         )]
@@ -158,13 +157,13 @@ fn sync_menu_button_colors(
             &mut BackgroundColor,
             Option<&ComponentButton>,
             Option<&ResourceButton>,
-            Option<&RemoteRpcButton>,
+            Option<&NewScene>,
         ),
         Or<(
             With<ComponentButton>,
             With<ResourceButton>,
             With<StateButton>,
-            With<RemoteRpcButton>,
+            With<NewScene>,
         )>,
     >,
 ) {
@@ -174,7 +173,7 @@ fn sync_menu_button_colors(
         } else if res.is_some() {
             *app_state.get() == SidebarState::Resource
         } else if rpc.is_some() {
-            *app_state.get() == SidebarState::RemoteRPC
+            *app_state.get() == SidebarState::NewScene
         } else {
             *app_state.get() == SidebarState::State
         };
@@ -224,13 +223,13 @@ fn on_state_button(
     }
 }
 
-fn on_remote_rpc_button(
-    query: Query<&Interaction, (Changed<Interaction>, With<RemoteRpcButton>)>,
+fn on_new_scene_button(
+    query: Query<&Interaction, (Changed<Interaction>, With<NewScene>)>,
     mut next_state: ResMut<NextState<SidebarState>>,
 ) {
     for interaction in &query {
         if *interaction == Interaction::Pressed {
-            next_state.set(SidebarState::RemoteRPC);
+            next_state.set(SidebarState::NewScene);
         }
     }
 }

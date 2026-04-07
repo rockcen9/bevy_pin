@@ -6,7 +6,9 @@ pub mod resource;
 
 pub mod connection;
 
-pub mod component;
+pub mod entity_query;
+
+pub mod new_scene;
 
 pub fn plugin(app: &mut App) {
     app.add_systems(Startup, |mut commands: Commands| {
@@ -15,11 +17,15 @@ pub fn plugin(app: &mut App) {
 
     connection::plugin(app);
 
-    app.add_sub_state::<SidebarState>();
+    app.init_state::<SidebarState>()
+        .register_type::<State<SidebarState>>()
+        .register_type::<NextState<SidebarState>>();
 
     state::plugin(app);
 
     resource::plugin(app);
 
-    component::plugin(app);
+    entity_query::plugin(app);
+
+    new_scene::plugin(app);
 }

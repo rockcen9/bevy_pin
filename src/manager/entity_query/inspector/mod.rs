@@ -3,7 +3,7 @@ use bevy::{
     text::{EditableText, FontCx, LayoutCx, TextCursorStyle},
 };
 
-use crate::manager::component::component_data::{
+use crate::manager::entity_query::component_data::{
     ComponentDataState, ComponentNameRow, SelectedComponent,
 };
 use crate::manager::connection::ServerUrl;
@@ -18,6 +18,11 @@ use crate::ui_layout::theme::widgets::{scrollable_list, ScrollableContainer};
 
 #[derive(Deserialize)]
 struct GetComponentResponse {
+    result: serde_json::Value,
+}
+
+#[derive(Deserialize)]
+struct MutateComponentResponse {
     result: serde_json::Value,
 }
 
@@ -86,6 +91,7 @@ pub fn inspector_panel() -> impl Scene {
 
 pub fn plugin(app: &mut App) {
     app.add_plugins(BrpEndpointPlugin::<GetComponentResponse>::default())
+        .add_plugins(BrpEndpointPlugin::<MutateComponentResponse>::default())
         .init_resource::<InspectorState>()
         .insert_resource(InspectorPollTimer(Timer::from_seconds(
             1.0,
@@ -414,7 +420,7 @@ fn submit_inspector_field(
         format!(".{}", marker.field_key)
     };
 
-    mutate_component_field(entity_id, type_path.clone(), field_path, json_value, &server_url.0);
+    mutate_component_field(entity_id, type_path.clone(), field_path, json_value, &server_url.0, &mut commands);
 
     text_input.clear(&mut font_cx.0, &mut layout_cx.0);
     commands.entity(focused_entity).insert(RefreshOnce);
@@ -428,8 +434,9 @@ fn mutate_component_field(
     field_path: String,
     value: serde_json::Value,
     url: &str,
+    commands: &mut Commands,
 ) {
-    let body = json!({
+    let payload = serde_json::to_vec(&json!({
         "jsonrpc": "2.0",
         "id": 1,
         "method": "world.mutate_components",
@@ -439,17 +446,31 @@ fn mutate_component_field(
             "path": field_path,
             "value": value
         }
-    });
+    }))
+    .unwrap();
 
-    let request = ehttp::Request::post(url, serde_json::to_vec(&body).unwrap());
-    ehttp::fetch(request, move |result| match result {
-        Ok(r) => {
-            if let Some(body) = r.text() {
-                info!("mutate_component_field response: {}", body);
-            }
-        }
-        Err(e) => error!("mutate_component_field failed: {}", e),
-    });
+    commands
+        .spawn(BrpRequest::<MutateComponentResponse>::new(url, payload))
+        .observe(
+            |trigger: On<Add, BrpResponse<MutateComponentResponse>>,
+             query: Query<&BrpResponse<MutateComponentResponse>>,
+             mut commands: Commands| {
+                let entity = trigger.entity;
+                if let Ok(response) = query.get(entity) {
+                    match &response.data {
+                        Ok(body) => info!("mutate_component_field response: {:?}", body.result),
+                        Err(e) => error!("mutate_component_field failed: {}", e),
+                    }
+                }
+                commands.entity(entity).despawn();
+            },
+        )
+        .observe(
+            |trigger: On<Add, TimeoutError>, mut commands: Commands| {
+                error!("mutate_component_field request timed out");
+                commands.entity(trigger.entity).despawn();
+            },
+        );
 }
 
 // ── Value helpers ──────────────────────────────────────────────────────────

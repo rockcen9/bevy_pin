@@ -150,9 +150,19 @@ pub struct Run;
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
-#[require(Name::new("Animal"))]
-pub struct Animal;
+#[require(Name::new("Lion"), Age(10), Transform::default())]
+pub struct Lion;
 
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+#[require(Name::new("Rabbit"))]
+pub struct Rabbit;
+
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+#[require(Name::new("Animal"))]
+
+pub struct Animal;
 fn monitor_state(app: &mut App) {
     app.add_systems(
         Update,

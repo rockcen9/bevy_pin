@@ -1,7 +1,7 @@
 use crate::{manager::SidebarState, prelude::*};
 use std::sync::Arc;
 
-use super::get::{DiscoveredStates, send_next_state};
+use super::get::{DiscoveredStates, InsertResourceResponse};
 use crate::manager::connection::ServerUrl;
 
 use crate::ui_layout::theme::palette::{
@@ -230,21 +230,55 @@ fn handle_state_button_press(
     query: Query<(&Interaction, &StateButton), Changed<Interaction>>,
     states: Res<DiscoveredStates>,
     server_url: Res<ServerUrl>,
+    mut commands: Commands,
 ) {
     for (interaction, button) in &query {
         if *interaction != Interaction::Pressed {
             continue;
         }
-        let next_state_resource = states
+        let Some(path) = states
             .0
             .iter()
             .find(|e| e.state_type_path == &*button.state_type_path)
-            .and_then(|e| e.next_state_resource.clone());
+            .and_then(|e| e.next_state_resource.clone())
+        else {
+            error!("NextState resource not found — cannot switch state");
+            continue;
+        };
 
-        send_next_state(
-            button.variant.to_string(),
-            next_state_resource,
-            &server_url.0,
-        );
+        let variant = button.variant.to_string();
+        let payload = serde_json::to_vec(&json!({
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "world.insert_resources",
+            "params": {
+                "resource": path,
+                "value": { "Pending": variant }
+            }
+        }))
+        .unwrap();
+
+        commands
+            .spawn(BrpRequest::<InsertResourceResponse>::new(&server_url.0, payload))
+            .observe(
+                |trigger: On<Add, BrpResponse<InsertResourceResponse>>,
+                 query: Query<&BrpResponse<InsertResourceResponse>>,
+                 mut commands: Commands| {
+                    let entity = trigger.entity;
+                    if let Ok(response) = query.get(entity) {
+                        match &response.data {
+                            Ok(body) => info!("State switch response: {:?}", body.result),
+                            Err(e) => error!("State switch failed: {}", e),
+                        }
+                    }
+                    commands.entity(entity).despawn();
+                },
+            )
+            .observe(
+                |trigger: On<Add, TimeoutError>, mut commands: Commands| {
+                    error!("State switch request timed out");
+                    commands.entity(trigger.entity).despawn();
+                },
+            );
     }
 }

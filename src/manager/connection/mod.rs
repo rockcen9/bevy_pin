@@ -56,27 +56,23 @@ pub enum ConnectionState {
     Disconnected,
 }
 
+#[derive(Deserialize)]
+struct HeartbeatResponse {}
+
 #[derive(Resource)]
 struct HeartbeatTimer(Timer);
 
-#[derive(Resource)]
-struct HeartbeatReceiver(Receiver<bool>);
-
-#[derive(Resource)]
-struct HeartbeatSender(Sender<bool>);
-
 pub fn plugin(app: &mut App) {
-    let (tx, rx) = unbounded();
     app.init_resource::<ServerUrl>()
-        .init_state::<ConnectionState>()
+        .add_plugins(BrpEndpointPlugin::<HeartbeatResponse>::default())
         .insert_resource(HeartbeatTimer(Timer::from_seconds(
             1.0,
             TimerMode::Repeating,
         )))
-        .insert_resource(HeartbeatSender(tx))
-        .insert_resource(HeartbeatReceiver(rx))
-        .add_systems(Update, (send_heartbeat, receive_heartbeat));
-
+        .add_systems(Update, send_heartbeat);
+    app.init_state::<ConnectionState>()
+        .register_type::<State<ConnectionState>>()
+        .register_type::<NextState<ConnectionState>>();
     app.add_systems(Startup, setup_connection_from_url);
     reconnect::plugin(app);
     ui::plugin(app);
@@ -85,40 +81,50 @@ pub fn plugin(app: &mut App) {
 fn send_heartbeat(
     time: Res<Time>,
     mut timer: ResMut<HeartbeatTimer>,
-    sender: Res<HeartbeatSender>,
     server_url: Res<ServerUrl>,
+    mut commands: Commands,
 ) {
     if !timer.0.tick(time.delta()).just_finished() {
         return;
     }
 
-    let tx = sender.0.clone();
-    let body = json!({
+    let payload = serde_json::to_vec(&json!({
         "jsonrpc": "2.0",
         "id": 0,
         "method": "world.get"
-    });
+    }))
+    .unwrap();
 
-    let request = ehttp::Request::post(&server_url.0, serde_json::to_vec(&body).unwrap());
-    ehttp::fetch(request, move |result| {
-        let connected = result.map(|r| r.ok).unwrap_or(false);
-        let _ = tx.send(connected);
-    });
-}
-
-fn receive_heartbeat(
-    receiver: Res<HeartbeatReceiver>,
-    current: Res<State<ConnectionState>>,
-    mut next_state: ResMut<NextState<ConnectionState>>,
-) {
-    while let Ok(connected) = receiver.0.try_recv() {
-        let next = if connected {
-            ConnectionState::Connected
-        } else {
-            ConnectionState::Disconnected
-        };
-        if *current.get() != next {
-            next_state.set(next);
-        }
-    }
+    commands
+        .spawn(BrpRequest::<HeartbeatResponse>::new(&server_url.0, payload))
+        .observe(
+            |trigger: On<Add, BrpResponse<HeartbeatResponse>>,
+             query: Query<&BrpResponse<HeartbeatResponse>>,
+             current: Res<State<ConnectionState>>,
+             mut next_state: ResMut<NextState<ConnectionState>>,
+             mut commands: Commands| {
+                let entity = trigger.entity;
+                let connected = query.get(entity).map(|r| r.data.is_ok()).unwrap_or(false);
+                let next = if connected {
+                    ConnectionState::Connected
+                } else {
+                    ConnectionState::Disconnected
+                };
+                if *current.get() != next {
+                    next_state.set(next);
+                }
+                commands.entity(entity).despawn();
+            },
+        )
+        .observe(
+            |trigger: On<Add, TimeoutError>,
+             current: Res<State<ConnectionState>>,
+             mut next_state: ResMut<NextState<ConnectionState>>,
+             mut commands: Commands| {
+                if *current.get() != ConnectionState::Disconnected {
+                    next_state.set(ConnectionState::Disconnected);
+                }
+                commands.entity(trigger.entity).despawn();
+            },
+        );
 }

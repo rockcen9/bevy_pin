@@ -1,4 +1,4 @@
-use crate::manager::component::entity_list::ui::{ComponentEntityRow, SelectedRow};
+use crate::manager::entity_query::entity_list::ui::{ComponentEntityRow, SelectedRow};
 use crate::manager::connection::ServerUrl;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
@@ -31,6 +31,10 @@ struct CheckComponentsCtx {
 }
 
 // ── State ──────────────────────────────────────────────────────────────────
+
+/// Set this to drive the component data panel from any context (entity_query or new_scene).
+#[derive(Resource, Default)]
+pub struct InspectedEntity(pub Option<u64>);
 
 #[derive(Resource, Default)]
 pub struct ComponentDataState {
@@ -93,6 +97,7 @@ pub fn component_data_panel() -> impl Scene {
 pub fn plugin(app: &mut App) {
     app.add_plugins(BrpEndpointPlugin::<ListComponentsResponse>::default())
         .add_plugins(BrpEndpointPlugin::<CheckComponentsResponse>::default())
+        .init_resource::<InspectedEntity>()
         .init_resource::<ComponentDataState>()
         .insert_resource(ComponentDataPollTimer(Timer::from_seconds(
             1.0,
@@ -115,15 +120,21 @@ pub fn plugin(app: &mut App) {
 
 fn fetch_on_selection(
     selected: Query<&ComponentEntityRow, With<SelectedRow>>,
+    inspected: Res<InspectedEntity>,
     server_url: Res<ServerUrl>,
     mut commands: Commands,
     mut state: ResMut<ComponentDataState>,
     mut last: Local<Option<u64>>,
 ) {
-    let current_id = selected.single().ok().map(|r| r.entity);
+    let from_row = selected.single().ok().map(|r| r.entity);
+    let current_id = from_row.or(inspected.0);
+    if inspected.is_changed() {
+        debug!("fetch_on_selection: InspectedEntity changed -> {:?}", inspected.0);
+    }
     if current_id == *last {
         return;
     }
+    debug!("fetch_on_selection: entity changed {:?} -> {:?}", *last, current_id);
     *last = current_id;
     state.entity_id = current_id;
     state.type_paths.clear();
@@ -131,8 +142,10 @@ fn fetch_on_selection(
     state.ready = false;
 
     let Some(entity_id) = current_id else {
+        debug!("fetch_on_selection: cleared (no entity selected)");
         return;
     };
+    debug!("fetch_on_selection: fetching components for entity #{}", entity_id);
 
     let payload = serde_json::to_vec(&json!({
         "jsonrpc": "2.0",
@@ -160,15 +173,18 @@ fn fetch_on_selection(
                 };
 
                 if state.entity_id != Some(ctx.entity_id) {
+                    debug!("list_components response: stale (state={:?}, ctx={}), dropping", state.entity_id, ctx.entity_id);
                     commands.entity(ecs_entity).despawn();
                     return;
                 }
 
                 if let Ok(data) = &response.data {
                     let type_paths = data.result.clone();
+                    debug!("list_components response: {} components for entity #{}", type_paths.len(), ctx.entity_id);
                     state.type_paths = type_paths.clone();
 
                     if type_paths.is_empty() {
+                        debug!("list_components: entity #{} has no components, marking ready", ctx.entity_id);
                         state.ready = true;
                     } else {
                         let payload = serde_json::to_vec(&json!({
