@@ -1,3 +1,8 @@
+## [0.1.3] - 2026-04-07
+
+### 🚀 Features
+
+- Update component data
 ## [0.1.2] - 2026-04-06
 
 ### 🚀 Features
@@ -19,6 +24,10 @@
 
 - Update component query documentation to include shorthand syntax support
 - Add missing code block formatting to README examples
+
+### ⚙️ Miscellaneous Tasks
+
+- Release
 ## [0.1.1] - 2026-04-05
 
 ### 🐛 Bug Fixes
