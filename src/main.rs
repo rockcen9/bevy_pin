@@ -29,6 +29,8 @@ fn main() -> AppExit {
                     "bevy_pin::manager::resource::set=warn,",
                     "bevy_pin::manager::resource::ui=warn,",
                     "bevy_pin::manager::component::get=warn,",
+                    "bevy_pin::manager::component::query::history=debug,",
+                    "bevy_pin::manager::component::query::insert=debug,",
                     "bevy_pin::manager::component::query=warn,",
                     "bevy_pin::manager::component::entity_list::ui=warn,",
                     "bevy_pin::manager::connection::reconnect=warn,",

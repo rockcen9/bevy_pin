@@ -1,9 +1,10 @@
 use crate::{
     manager::{
         component::{
-            component_data, inspector,
+            component_data,
             entity_list::ui,
-            query::ui::query_panel,
+            inspector,
+            query::{history::query_history_panel, insert::insert_panel, query_panel_root},
             ui::{left_query_root, right_info_root},
         },
         resource::ui::resource_panels_root,
@@ -77,7 +78,13 @@ fn spawn_component_panel(
             Children [
                 (left_query_root()
                 Children [
-                    query_panel(),
+                    (
+                        query_panel_root()
+                        Children[
+                            insert_panel(),
+                            query_history_panel(),
+                        ]
+                    ),
                     ui::entity_list_panel(),
                 ]),
                 (right_info_root()

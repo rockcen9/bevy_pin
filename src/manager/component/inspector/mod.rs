@@ -12,6 +12,7 @@ use crate::ui_layout::theme::palette::{
     COLOR_HEADER_BG, COLOR_INPUT_BG, COLOR_INPUT_BORDER, COLOR_INPUT_TEXT,
     COLOR_LABEL as COLOR_FIELD_KEY, COLOR_PANEL_BG, COLOR_TITLE,
 };
+use crate::ui_layout::theme::widgets::{scrollable_list, ScrollableContainer};
 
 // ── BRP ────────────────────────────────────────────────────────────────────
 
@@ -44,9 +45,6 @@ struct InspectorPollTimer(Timer);
 #[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
 struct InspectorPanel;
 
-#[derive(Component, Clone, Default)]
-struct InspectorContent;
-
 /// Marker on the editable input so we know which entity/component/field to mutate on Enter.
 #[derive(Component, Clone, Default)]
 struct EditableInspectorField {
@@ -64,6 +62,7 @@ pub fn inspector_panel() -> impl Scene {
         Node {
             flex_direction: FlexDirection::Column,
             min_width: Val::Px(280.0),
+            max_width: Val::Px(280.0),
             border_radius: BorderRadius::all(Val::Px(10.0)),
         }
         BackgroundColor(COLOR_PANEL_BG)
@@ -80,14 +79,7 @@ pub fn inspector_panel() -> impl Scene {
                     TextColor(COLOR_TITLE)
                 )]
             ),
-            (
-                Node {
-                    flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(6.0),
-                    padding: UiRect::all(Val::Px(10.0)),
-                }
-                InspectorContent
-            ),
+            scrollable_list("inspector", 300.0),
         ]
     }
 }
@@ -266,9 +258,11 @@ fn poll_inspector_fields(
 fn render_inspector(
     mut commands: Commands,
     state: Res<InspectorState>,
-    content: Query<(Entity, Option<&Children>), With<InspectorContent>>,
+    content: Query<(Entity, Option<&Children>, &ScrollableContainer)>,
 ) {
-    let Ok((content_entity, children)) = content.single() else {
+    let Some((content_entity, children, _)) =
+        content.iter().find(|(_, _, c)| c.0 == "inspector")
+    else {
         return;
     };
 

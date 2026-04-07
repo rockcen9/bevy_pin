@@ -12,6 +12,7 @@ use crate::ui_layout::theme::palette::{
     COLOR_INPUT_BORDER, COLOR_INPUT_TEXT, COLOR_LABEL_DISABLED, COLOR_LABEL_SECONDARY,
     COLOR_PANEL_BG, COLOR_PANEL_BG_DISABLED, COLOR_TITLE,
 };
+use crate::ui_layout::theme::widgets::{scrollable_list, ScrollableContainer};
 use std::sync::Arc;
 
 // Marker on the outer panel node for disabled-state color updates
@@ -22,9 +23,6 @@ struct ResourcePanelMarker(Arc<str>);
 #[derive(Component, Clone, Default)]
 struct ResourcePanelHeader(Arc<str>);
 
-// Use Arc<str> to avoid heavy string cloning during UI lookups
-#[derive(Component, Clone, Default)]
-struct ResourceFieldsContainer(Arc<str>);
 
 // Use Arc<str> for identification fields
 #[derive(Component, Clone, Default)]
@@ -93,11 +91,12 @@ pub fn resource_panels_root() -> impl Scene {
 
 fn resource_panel(label: String, type_path: Arc<str>) -> impl Scene {
     let header_type_path = type_path.clone();
-    let container_type_path = type_path.clone();
+    let list_key = type_path.to_string();
     bsn! {
         Node {
             flex_direction: FlexDirection::Column,
-            min_width: Val::Px(220.0),
+            min_width: Val::Px(280.0),
+            max_width: Val::Px(280.0),
             border_radius: BorderRadius::all(Val::Px(10.0)),
         }
         BackgroundColor(COLOR_PANEL_BG)
@@ -111,21 +110,12 @@ fn resource_panel(label: String, type_path: Arc<str>) -> impl Scene {
                 BackgroundColor(COLOR_HEADER_BG)
                 ResourcePanelHeader({ header_type_path.clone() })
                 Children [(
-                    // Using curly braces for the macro parser
-                    Text::new(label.clone() )
+                    Text::new(label.clone())
                     template(|_| Ok(TextFont::from_font_size(18.0)))
                     TextColor(COLOR_TITLE)
                 )]
             ),
-            (
-                Node {
-                    flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(4.0),
-                    padding: UiRect::all(Val::Px(10.0)),
-                }
-                // Clone the Arc pointer, not the string data
-                ResourceFieldsContainer({ container_type_path.clone() })
-            ),
+            scrollable_list(list_key, 300.0),
         ]
     }
 }
@@ -295,7 +285,7 @@ fn spawn_resource_panels(
 fn spawn_field_rows(
     mut commands: Commands,
     resources: Res<DiscoveredResources>,
-    containers: Query<(Entity, &ResourceFieldsContainer)>,
+    containers: Query<(Entity, &ScrollableContainer)>,
     mut spawned: ResMut<SpawnedFieldRows>,
 ) {
     if !resources.is_changed() {
@@ -311,8 +301,7 @@ fn spawn_field_rows(
             continue;
         }
 
-        // Deref the Arc container field (&*c.0) to compare with String
-        let Some((container_entity, _)) = containers.iter().find(|(_, c)| &*c.0 == entry.type_path)
+        let Some((container_entity, _)) = containers.iter().find(|(_, c)| c.0 == entry.type_path)
         else {
             continue;
         };

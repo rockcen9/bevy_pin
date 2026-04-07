@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
-pub mod ui;
+pub mod history;
+pub mod insert;
 
 #[derive(Debug, Clone)]
 pub struct QueryEntry {
@@ -70,9 +71,26 @@ impl ComponentQueries {
     }
 }
 
+#[derive(Component, Clone, Default)]
+pub struct QueryPanelRoot;
+
+pub fn query_panel_root() -> impl Scene {
+    bsn! {
+        #QueryPanelRoot
+        QueryPanelRoot
+        Node {
+            flex_direction: FlexDirection::Column,
+            min_width: Val::Px(320.0),
+            border_radius: BorderRadius::all(Val::Px(10.0)),
+            row_gap: Val::Px(12.0),
+        }
+    }
+}
+
 pub fn plugin(app: &mut App) {
     app.init_resource::<ComponentQueries>();
-    ui::plugin(app);
+    history::plugin(app);
+    insert::plugin(app);
 
     #[cfg(feature = "dev")]
     app.add_systems(Update, print_queries);

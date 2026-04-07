@@ -10,7 +10,7 @@ pub mod theme;
 
 pub fn plugin(app: &mut App) {
     app.add_systems(Startup, spawn_root_panel);
-    app.add_plugins((header::plugin, body::plugin, debug::plugin));
+    app.add_plugins((theme::plugin, header::plugin, body::plugin, debug::plugin));
 }
 
 #[derive(Component, Default, Clone)]

@@ -1,9 +1,12 @@
 use bevy::{
     input_focus::{InputFocus, tab_navigation::TabIndex},
-    text::{EditableText, FontCx, LayoutCx, TextCursorStyle},
+    text::{EditableText, TextCursorStyle},
 };
 
-use super::{ComponentQueries, QueryEntry};
+use super::{
+    ComponentQueries, QueryEntry,
+    history::{QueryHistory, SelectedHistoryQuery},
+};
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
     COLOR_BUTTON_BG, COLOR_BUTTON_HOVER, COLOR_HEADER_BG, COLOR_HINT_BG, COLOR_INPUT_BG,
@@ -12,7 +15,7 @@ use crate::ui_layout::theme::palette::{
 };
 
 #[derive(Component, Clone, Default)]
-struct QueryPanelRoot;
+struct InsertPanel;
 
 #[derive(Component, Clone, Default)]
 struct QueryInput;
@@ -23,19 +26,26 @@ struct AddQueryButton;
 pub fn plugin(app: &mut App) {
     app.add_systems(
         Update,
-        (submit_on_enter, handle_add_button, update_button_hover),
+        (
+            submit_on_enter,
+            handle_add_button,
+            update_button_hover,
+            populate_from_history,
+        ),
     );
 }
 
-pub fn query_panel() -> impl Scene {
+pub fn insert_panel() -> impl Scene {
     bsn! {
         Node {
             flex_direction: FlexDirection::Column,
-            min_width: Val::Px(320.0),
+            min_width: Val::Px(280.0),
+            max_width: Val::Px(280.0),
             border_radius: BorderRadius::all(Val::Px(10.0)),
         }
         BackgroundColor(COLOR_PANEL_BG)
-        QueryPanelRoot
+        #InsertPanel
+        InsertPanel
         Children [
             (
                 Node {
@@ -44,7 +54,7 @@ pub fn query_panel() -> impl Scene {
                 }
                 BackgroundColor(COLOR_HEADER_BG)
                 Children [(
-                    Text::new("Component Query")
+                    Text::new("Entity Query")
                     template(|_| Ok(TextFont::from_font_size(18.0)))
                     TextColor(COLOR_TITLE)
                 )]
@@ -61,7 +71,7 @@ pub fn query_panel() -> impl Scene {
                         Node {
                             flex_grow: 1.0,
                             border: UiRect::all(Val::Px(1.0)),
-                            padding: UiRect::axes(Val::Px(8.0), Val::Px(6.0)),
+                            padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
                             border_radius: BorderRadius::all(Val::Px(4.0)),
                         }
                         BorderColor::all(COLOR_INPUT_BORDER)
@@ -171,8 +181,7 @@ fn submit_on_enter(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut query_inputs: Query<&mut EditableText, With<QueryInput>>,
     mut queries: ResMut<ComponentQueries>,
-    mut font_cx: ResMut<FontCx>,
-    mut layout_cx: ResMut<LayoutCx>,
+    mut history: ResMut<QueryHistory>,
 ) {
     if !keyboard.just_pressed(KeyCode::Enter) {
         return;
@@ -190,16 +199,16 @@ fn submit_on_enter(
         return;
     }
 
-    queries.insert(QueryEntry::new(value));
-    text_input.clear(&mut font_cx.0, &mut layout_cx.0);
+    queries.insert(QueryEntry::new(value.clone()));
+    history.add(value);
+    text_input.editor_mut().set_text(" ");
 }
 
 fn handle_add_button(
     buttons: Query<&Interaction, (Changed<Interaction>, With<AddQueryButton>)>,
     mut query_inputs: Query<&mut EditableText, With<QueryInput>>,
     mut queries: ResMut<ComponentQueries>,
-    mut font_cx: ResMut<FontCx>,
-    mut layout_cx: ResMut<LayoutCx>,
+    mut history: ResMut<QueryHistory>,
 ) {
     for interaction in &buttons {
         if *interaction != Interaction::Pressed {
@@ -215,8 +224,9 @@ fn handle_add_button(
             continue;
         }
 
-        queries.insert(QueryEntry::new(value));
-        text_input.clear(&mut font_cx.0, &mut layout_cx.0);
+        queries.insert(QueryEntry::new(value.clone()));
+        history.add(value);
+        text_input.editor_mut().set_text(" ");
     }
 }
 
@@ -233,4 +243,18 @@ fn update_button_hover(
         };
         color.set_if_neq(BackgroundColor(new_color));
     }
+}
+
+fn populate_from_history(
+    mut selected: ResMut<SelectedHistoryQuery>,
+    mut query_inputs: Query<&mut EditableText, With<QueryInput>>,
+) {
+    let Some(value) = selected.0.take() else {
+        return;
+    };
+    let Ok(mut text_input) = query_inputs.single_mut() else {
+        return;
+    };
+    debug!("populate_from_history: restoring \"{}\"", value);
+    text_input.editor_mut().set_text(&value);
 }
