@@ -1,23 +1,30 @@
 # Bevy Pin
 
-### Inspect Bevy, Built with Bevy. 🕊️
+> **Inspect Bevy, Built with Bevy. 🕊️**
 
-- Pin Data: Keep essential information in view for streamlined debugging.
-- Zero External Dependencies: Use it directly without adding any third-party crates to your project.
-- Official Integration: Fully compatible with the official Bevy Remote Protocol.
-  
-Example setup in [./examples/demo_game.rs](./examples/demo_game.rs)
+Bevy Pin is a remote debugging and data inspection tool for Bevy, running in the browser and communicating via the official Bevy Remote Protocol.
 
-Try it live at <https://rockcen9.github.io/bevy_pin/>!
-The default host is `127.0.0.1:15702`.
-You can append `?host=192.168.1.100:15702` to the URL to connect to a completely different address.
+- 📌 **Pin Data:** Keep essential information pinned in view for streamlined debugging.
+- 📦 **Zero External Dependencies:** Built natively—no third-party crates needed in your game project!
+- 🔌 **Official Integration:** Fully compatible with Bevy's built-in remote protocol (BRP).
+
+[**🎮 Try it live here!**](https://rockcen9.github.io/bevy_pin/)
+
+*The default connection is `127.0.0.1:15702`. To connect to a custom address, append `?host=192.168.1.100:15702` to the URL.*
+*Example Bevy setup is available in [`./examples/demo_game.rs`](./examples/demo_game.rs).*
 
 > [!WARNING]
 > This project is currently under active development. Features are subject to change.
 
 ### Native Alternative
 
-Run `cargo run` from the project directory. By default, it will keep trying to connect to <http://127.0.0.1:15702>.
+If you prefer a native desktop app over the web dashboard, clone this repository and run:
+
+```bash
+cargo run
+```
+
+*It will keep trying to connect to `http://127.0.0.1:15702` by default.*
 
 ## [Changelog](./CHANGELOG.md)
 
