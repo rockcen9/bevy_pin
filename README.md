@@ -89,7 +89,8 @@ pub struct Bird { /* ... */ }
 
 - [x] View component data
 - [x] Edit component data
-- [ ] Pick from query history
+- [x] Pick from query history
+- [ ] Spawn entity
 - [ ] Add components to entities
 - [ ] Pin Entity by ID
 - [ ] Cache query history for the browser
