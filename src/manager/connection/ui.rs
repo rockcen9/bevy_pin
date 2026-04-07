@@ -1,44 +1,32 @@
 use super::ConnectionState;
 use crate::prelude::*;
+use crate::ui_layout::theme::palette::{COLOR_OVERLAY_BG, COLOR_OVERLAY_TEXT};
 
 #[derive(Component, Clone, Default)]
 struct DisconnectedOverlay;
 
 pub fn plugin(app: &mut App) {
-    app.add_systems(Update, (spawn_overlay, despawn_overlay));
+    app.add_systems(Update, sync_overlay);
 }
 
-fn spawn_overlay(
-    mut commands: Commands,
-    state: Res<State<ConnectionState>>,
-    overlay: Query<(), With<DisconnectedOverlay>>,
-) {
-    if !state.is_changed() {
-        return;
-    }
-    if *state.get() != ConnectionState::Disconnected {
-        return;
-    }
-    if !overlay.is_empty() {
-        return;
-    }
-
-    commands.spawn_scene(disconnected_overlay());
-}
-
-fn despawn_overlay(
+fn sync_overlay(
     mut commands: Commands,
     state: Res<State<ConnectionState>>,
     overlay: Query<Entity, With<DisconnectedOverlay>>,
 ) {
-    if !state.is_changed() {
-        return;
-    }
-    if *state.get() != ConnectionState::Connected {
-        return;
-    }
-    for entity in &overlay {
-        commands.entity(entity).despawn();
+    let should_show = *state.get() == ConnectionState::Disconnected;
+    let is_shown = !overlay.is_empty();
+
+    match (should_show, is_shown) {
+        (true, false) => {
+            commands.spawn_scene(disconnected_overlay());
+        }
+        (false, true) => {
+            for entity in &overlay {
+                commands.entity(entity).despawn();
+            }
+        }
+        _ => {}
     }
 }
 
@@ -53,13 +41,13 @@ fn disconnected_overlay() -> impl Scene {
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
         }
-        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.55))
+        BackgroundColor(COLOR_OVERLAY_BG)
         ZIndex(999)
         DisconnectedOverlay
         Children [(
             Text::new("Reconnecting...")
             template(|_| Ok(TextFont::from_font_size(48.0)))
-            TextColor(Color::srgba(0.75, 0.75, 0.75, 1.0))
+            TextColor(COLOR_OVERLAY_TEXT)
         )]
     }
 }

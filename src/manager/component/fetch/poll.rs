@@ -80,8 +80,10 @@ fn poll_components(
                                 .iter_mut()
                                 .find(|e| e.entity == ctx.entity && e.query == ctx.query)
                             {
-                                debug!("Name entity {}: value: {:#}", ctx.entity, value);
-                                entry.value = Some(value.clone());
+                                if entry.value.as_ref() != Some(value) {
+                                    debug!("Name entity {}: value: {:#}", ctx.entity, value);
+                                    entry.value = Some(value.clone());
+                                }
                             }
                         }
                     } else {

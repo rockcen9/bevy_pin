@@ -1,4 +1,4 @@
-use crate::manager::component::monitor::ui::{ComponentEntityRow, SelectedRow};
+use crate::manager::component::entity_list::ui::{ComponentEntityRow, SelectedRow};
 use crate::manager::connection::ServerUrl;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
@@ -39,13 +39,15 @@ pub struct ComponentDataState {
     pub ready: bool,               // true once has_data is resolved
 }
 
+#[derive(Resource)]
+struct ComponentDataPollTimer(Timer);
+
 // ── Marker Components ──────────────────────────────────────────────────────
 
 /// Marks a component name row in the Component Data panel.
 #[derive(Component, Clone)]
 pub struct ComponentNameRow {
     pub type_path: String,
-    pub short_name: String,
 }
 
 /// Marker for the currently selected component name row.
@@ -100,11 +102,16 @@ pub fn plugin(app: &mut App) {
     app.add_plugins(BrpEndpointPlugin::<ListComponentsResponse>::default())
         .add_plugins(BrpEndpointPlugin::<CheckComponentsResponse>::default())
         .init_resource::<ComponentDataState>()
+        .insert_resource(ComponentDataPollTimer(Timer::from_seconds(
+            1.0,
+            TimerMode::Repeating,
+        )))
         .add_observer(on_component_name_row_added)
         .add_systems(
             Update,
             (
                 fetch_on_selection,
+                poll_component_list,
                 render_component_names.run_if(resource_changed::<ComponentDataState>),
                 handle_component_row_selection,
                 update_component_row_hover,
@@ -206,6 +213,137 @@ fn fetch_on_selection(
         });
 }
 
+fn poll_component_list(
+    time: Res<Time>,
+    mut timer: ResMut<ComponentDataPollTimer>,
+    state: Res<ComponentDataState>,
+    server_url: Res<ServerUrl>,
+    mut commands: Commands,
+) {
+    if !timer.0.tick(time.delta()).just_finished() {
+        return;
+    }
+
+    let Some(entity_id) = state.entity_id else {
+        return;
+    };
+
+    let payload = serde_json::to_vec(&json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "world.list_components",
+        "params": { "entity": entity_id }
+    }))
+    .unwrap();
+
+    commands
+        .spawn((
+            BrpRequest::<ListComponentsResponse>::new(&server_url.0, payload),
+            ListComponentsCtx { entity_id },
+        ))
+        .observe(
+            |trigger: On<Add, BrpResponse<ListComponentsResponse>>,
+             q: Query<(&BrpResponse<ListComponentsResponse>, &ListComponentsCtx)>,
+             server_url: Res<ServerUrl>,
+             mut state: ResMut<ComponentDataState>,
+             mut commands: Commands| {
+                let ecs_entity = trigger.entity;
+                let Ok((response, ctx)) = q.get(ecs_entity) else {
+                    commands.entity(ecs_entity).despawn();
+                    return;
+                };
+
+                if state.entity_id != Some(ctx.entity_id) {
+                    commands.entity(ecs_entity).despawn();
+                    return;
+                }
+
+                if let Ok(data) = &response.data {
+                    let type_paths = data.result.clone();
+
+                    if type_paths != state.type_paths {
+                        state.type_paths = type_paths.clone();
+                        state.has_data.retain(|k| type_paths.contains(k));
+                    }
+
+                    if !type_paths.is_empty() {
+                        let payload = serde_json::to_vec(&json!({
+                            "jsonrpc": "2.0",
+                            "id": 1,
+                            "method": "world.get_components",
+                            "params": {
+                                "entity": ctx.entity_id,
+                                "components": type_paths,
+                                "strict": false
+                            }
+                        }))
+                        .unwrap();
+
+                        commands
+                            .spawn((
+                                BrpRequest::<CheckComponentsResponse>::new(&server_url.0, payload),
+                                CheckComponentsCtx {
+                                    entity_id: ctx.entity_id,
+                                },
+                            ))
+                            .observe(
+                                |trigger: On<Add, BrpResponse<CheckComponentsResponse>>,
+                                 q: Query<(
+                                    &BrpResponse<CheckComponentsResponse>,
+                                    &CheckComponentsCtx,
+                                )>,
+                                 mut state: ResMut<ComponentDataState>,
+                                 mut commands: Commands| {
+                                    let ecs_entity = trigger.entity;
+                                    let Ok((response, ctx)) = q.get(ecs_entity) else {
+                                        commands.entity(ecs_entity).despawn();
+                                        return;
+                                    };
+                                    if state.entity_id != Some(ctx.entity_id) {
+                                        commands.entity(ecs_entity).despawn();
+                                        return;
+                                    }
+                                    if let Ok(data) = &response.data {
+                                        if let Some(components_map) =
+                                            data.result["components"].as_object()
+                                        {
+                                            let mut new_has_data: HashSet<String> =
+                                                HashSet::new();
+                                            for (type_path, value) in components_map {
+                                                let has_fields = match value {
+                                                    serde_json::Value::Null => false,
+                                                    serde_json::Value::Object(m) => !m.is_empty(),
+                                                    _ => true,
+                                                };
+                                                if has_fields {
+                                                    new_has_data.insert(type_path.clone());
+                                                }
+                                            }
+                                            if new_has_data != state.has_data {
+                                                state.has_data = new_has_data;
+                                            }
+                                        }
+                                    }
+                                    if !state.ready {
+                                        state.ready = true;
+                                    }
+                                    commands.entity(ecs_entity).despawn();
+                                },
+                            )
+                            .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+                                commands.entity(trigger.entity).despawn();
+                            });
+                    }
+                }
+
+                commands.entity(ecs_entity).despawn();
+            },
+        )
+        .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+            commands.entity(trigger.entity).despawn();
+        });
+}
+
 fn on_check_components_response(
     trigger: On<Add, BrpResponse<CheckComponentsResponse>>,
     q: Query<(&BrpResponse<CheckComponentsResponse>, &CheckComponentsCtx)>,
@@ -225,20 +363,26 @@ fn on_check_components_response(
 
     if let Ok(data) = &response.data {
         if let Some(components_map) = data.result["components"].as_object() {
+            let mut new_has_data: HashSet<String> = HashSet::new();
             for (type_path, value) in components_map {
                 let has_fields = match value {
                     serde_json::Value::Null => false,
                     serde_json::Value::Object(m) => !m.is_empty(),
-                    _ => true, // number, bool, string, array all count
+                    _ => true,
                 };
                 if has_fields {
-                    state.has_data.insert(type_path.clone());
+                    new_has_data.insert(type_path.clone());
                 }
+            }
+            if new_has_data != state.has_data {
+                state.has_data = new_has_data;
             }
         }
     }
 
-    state.ready = true;
+    if !state.ready {
+        state.ready = true;
+    }
     commands.entity(ecs_entity).despawn();
 }
 
@@ -299,7 +443,6 @@ fn render_component_names(
             BackgroundColor(Color::NONE),
             ComponentNameRow {
                 type_path: type_path.clone(),
-                short_name: short_name.clone(),
             },
         ));
 

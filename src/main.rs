@@ -30,7 +30,7 @@ fn main() -> AppExit {
                     "bevy_pin::manager::resource::ui=warn,",
                     "bevy_pin::manager::component::get=warn,",
                     "bevy_pin::manager::component::query=warn,",
-                    "bevy_pin::manager::component::ui::monitor_panel=warn,",
+                    "bevy_pin::manager::component::entity_list::ui=warn,",
                     "bevy_pin::manager::connection::reconnect=warn,",
                 ),
                 default = bevy::log::DEFAULT_FILTER
