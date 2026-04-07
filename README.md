@@ -14,7 +14,7 @@ You can append `?host=192.168.1.100:15702` to the URL to connect to a completely
 > [!WARNING]
 > This project is currently under active development. Features are subject to change.
 
-## Native Alternative
+### Native Alternative
 
 Run `cargo run` from the project directory. By default, it will keep trying to connect to <http://127.0.0.1:15702>.
 
