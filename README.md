@@ -1,4 +1,5 @@
 # Bevy Pin
+
 ### Inspect Bevy, Built with Bevy. 🕊️
 
 - Pin Data: Keep essential information in view for streamlined debugging.
@@ -30,9 +31,9 @@ Run `cargo run` from the project directory. By default, it will keep trying to c
 
 ## Features
 
-### Component Query
+### Entity Query
 
-Set up custom component queries to track specific entities and see their component changes instantly. You can filter components using either `With<T>` and `Without<T>`, or the shorthand `T` and `!T`. (Still a work in progress.)
+Set up custom component queries to track specific entities and see their component changes instantly. You can filter components using either `With<T>` and `Without<T>`, or the shorthand `T` and `!T`.
 
 ### State Monitor and Switching
 
