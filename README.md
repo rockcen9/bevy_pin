@@ -28,7 +28,7 @@ cargo run
 
 ## [Changelog](./CHANGELOG.md)
 
-### [0.1.4] - 2026-04-08
+### [0.1.4] - 2026-04-07
 
 - Query history
 
