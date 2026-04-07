@@ -20,6 +20,10 @@ Run `cargo run` from the project directory. By default, it will keep trying to c
 
 ## [Changelog](./CHANGELOG.md)
 
+### [0.1.3] - 2026-04-07
+
+- Update component data
+
 ### [0.1.2] - 2026-04-06
 
 - Component data inspector (Read Only)
@@ -107,7 +111,7 @@ pub struct Bird {
 ## Roadmap
 
 - [x] View component data
-- [ ] Edit component data
+- [x] Edit component data
 - [ ] Pick from query history
 - [ ] Add components to entities
 - [ ] Pin Entity by ID
