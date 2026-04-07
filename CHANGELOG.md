@@ -1,8 +1,17 @@
+## [0.1.4] - 2026-04-07
+
+### 🚀 Features
+
+- Query history
 ## [0.1.3] - 2026-04-07
 
 ### 🚀 Features
 
 - Update component data
+
+### ⚙️ Miscellaneous Tasks
+
+- Release
 ## [0.1.2] - 2026-04-06
 
 ### 🚀 Features
