@@ -1,9 +1,9 @@
 # Bevy Pin
-### A web-based remote inspector built with Bevy 🕊️
+### Inspect Bevy, Built with Bevy. 🕊️
 
-- Pin the data to keep them in view for debugging.
-- Zero External Dependencies: You don't need to add any third-party crates to your project.
-- It works with the official Bevy Remote Protocol.
+- Pin Data: Keep essential information in view for streamlined debugging.
+- Zero External Dependencies: Use it directly without adding any third-party crates to your project.
+- Official Integration: Fully compatible with the official Bevy Remote Protocol.
   
 Example setup in [./examples/demo_game.rs](./examples/demo_game.rs)
 
