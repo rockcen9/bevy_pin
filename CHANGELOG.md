@@ -1,8 +1,17 @@
+## [0.1.5] - 2026-04-07
+
+### 🚀 Features
+
+- New scene
 ## [0.1.4] - 2026-04-07
 
 ### 🚀 Features
 
 - Query history
+
+### ⚙️ Miscellaneous Tasks
+
+- Release
 ## [0.1.3] - 2026-04-07
 
 ### 🚀 Features

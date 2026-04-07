@@ -10,7 +10,7 @@ crossbeam-channel = "0.5"
 
 [package]
 name = "bevy_pin"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2024"
 readme = "README.md"
 description = "A remote ECS inspector and monitor for Bevy (WASM-based)."
