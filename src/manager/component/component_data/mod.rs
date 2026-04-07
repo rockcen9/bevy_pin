@@ -6,6 +6,7 @@ use crate::ui_layout::theme::palette::{
     COLOR_LABEL_SECONDARY as COLOR_COMPONENT_NAME, COLOR_LABEL_TERTIARY as COLOR_EMPTY,
     COLOR_PANEL_BG, COLOR_ROW_HOVER, COLOR_ROW_SELECTED, COLOR_TITLE,
 };
+use crate::ui_layout::theme::widgets::{scrollable_list, ScrollableContainer};
 
 // ── BRP ────────────────────────────────────────────────────────────────────
 
@@ -60,9 +61,6 @@ pub struct SelectedComponent;
 #[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
 struct ComponentDataPanel;
 
-#[derive(Component, Clone, Default)]
-struct ComponentDataContent;
-
 pub fn component_data_panel() -> impl Scene {
     bsn! {
         #ComponentDataPanel
@@ -70,6 +68,7 @@ pub fn component_data_panel() -> impl Scene {
         Node {
             flex_direction: FlexDirection::Column,
             min_width: Val::Px(280.0),
+            max_width: Val::Px(280.0),
             border_radius: BorderRadius::all(Val::Px(10.0)),
         }
         BackgroundColor(COLOR_PANEL_BG)
@@ -86,14 +85,7 @@ pub fn component_data_panel() -> impl Scene {
                     TextColor(COLOR_TITLE)
                 )]
             ),
-            (
-                Node {
-                    flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(2.0),
-                    padding: UiRect::all(Val::Px(10.0)),
-                }
-                ComponentDataContent
-            ),
+            scrollable_list("component-data", 300.0),
         ]
     }
 }
@@ -389,9 +381,9 @@ fn on_check_components_response(
 fn render_component_names(
     mut commands: Commands,
     state: Res<ComponentDataState>,
-    content: Query<(Entity, Option<&Children>), With<ComponentDataContent>>,
+    content: Query<(Entity, Option<&Children>, &ScrollableContainer)>,
 ) {
-    let Ok((content_entity, children)) = content.single() else {
+    let Some((content_entity, children, _)) = content.iter().find(|(_, _, c)| c.0 == "component-data") else {
         return;
     };
 

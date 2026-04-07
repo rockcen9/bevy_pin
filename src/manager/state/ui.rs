@@ -5,16 +5,14 @@ use super::get::{DiscoveredStates, send_next_state};
 use crate::manager::connection::ServerUrl;
 
 use crate::ui_layout::theme::palette::{
-    COLOR_ACTIVE, COLOR_BUTTON_TEXT, COLOR_DISABLED, COLOR_HEADER_BG, COLOR_HOVER, COLOR_INACTIVE,
-    COLOR_PANEL_BG, COLOR_TITLE,
+    COLOR_ACTIVE, COLOR_BUTTON_TEXT, COLOR_DISABLED, COLOR_HOVER, COLOR_INACTIVE,
 };
+use crate::ui_layout::theme::widgets::{titled_panel, ScrollableContainer};
 
 #[derive(Component, Clone, Default)]
 #[require(DespawnOnExit::<SidebarState>(SidebarState::State), Name::new("StatePanelRoot"))]
 pub struct StatePanelsRoot;
 
-#[derive(Component, Clone, Default)]
-struct StatePanelContainer(Arc<str>);
 
 #[derive(Component, Clone, Default)]
 struct StateButton {
@@ -71,39 +69,6 @@ pub fn state_panels_root() -> impl Scene {
     }
 }
 
-fn state_panel(label: String, type_path: Arc<str>) -> impl Scene {
-    bsn! {
-        Node {
-            flex_direction: FlexDirection::Column,
-            min_width: Val::Px(180.0),
-            border_radius: BorderRadius::all(Val::Px(10.0)),
-        }
-        BackgroundColor(COLOR_PANEL_BG)
-        Children [
-            (
-                Node {
-                    padding: UiRect::axes(Val::Px(14.0), Val::Px(10.0)),
-                    border_radius: BorderRadius::top(Val::Px(10.0)),
-                }
-                BackgroundColor(COLOR_HEADER_BG)
-                Children [(
-                    Text::new( label.clone() )
-                    template(|_| Ok(TextFont::from_font_size(18.0)))
-                    TextColor(COLOR_TITLE)
-                )]
-            ),
-            (
-                Node {
-                    flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(4.0),
-                    padding: UiRect::all(Val::Px(10.0)),
-                }
-                // Use curly braces here too
-                StatePanelContainer({ type_path.clone() })
-            ),
-        ]
-    }
-}
 
 fn state_button(variant: Arc<str>, state_type_path: Arc<str>) -> impl Scene {
     let label = variant.to_string();
@@ -151,10 +116,12 @@ fn spawn_state_panels(
 
         debug!("Spawning panel for state: {}", entry.state_type_path);
 
-        let type_path_arc: Arc<str> = entry.state_type_path.as_str().into();
-
         let panel = commands
-            .spawn_scene(state_panel(entry.label.clone(), type_path_arc))
+            .spawn_scene(titled_panel(
+                entry.label.clone(),
+                entry.state_type_path.clone(),
+                300.0,
+            ))
             .id();
         commands.entity(root_entity).add_child(panel);
     }
@@ -163,7 +130,7 @@ fn spawn_state_panels(
 fn spawn_state_buttons(
     mut commands: Commands,
     states: Res<DiscoveredStates>,
-    containers: Query<(Entity, &StatePanelContainer)>,
+    containers: Query<(Entity, &ScrollableContainer)>,
     mut spawned: ResMut<SpawnedStateButtons>,
 ) {
     if !states.is_changed() {
@@ -177,7 +144,7 @@ fn spawn_state_buttons(
 
         let Some((container_entity, _)) = containers
             .iter()
-            .find(|(_, c)| &*c.0 == entry.state_type_path)
+            .find(|(_, c)| c.0 == entry.state_type_path)
         else {
             continue;
         };
@@ -193,10 +160,8 @@ fn spawn_state_buttons(
         let type_path_arc: Arc<str> = entry.state_type_path.as_str().into();
 
         for variant in &entry.variants {
-            let variant_arc: Arc<str> = variant.as_str().into();
-
             let btn = commands
-                .spawn_scene(state_button(variant_arc, type_path_arc.clone()))
+                .spawn_scene(state_button(variant.as_str().into(), type_path_arc.clone()))
                 .id();
             commands.entity(container_entity).add_child(btn);
         }
