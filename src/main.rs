@@ -54,7 +54,7 @@ fn main() -> AppExit {
         .set(WindowPlugin {
             primary_window: Window {
                 visible: false,
-                title: "Bevy Spot".to_string(),
+                title: "Bevy Pin".to_string(),
                 fit_canvas_to_parent: true,
                 resolution: bevy::window::WindowResolution::new(
                     GAME_WIDTH as u32,
