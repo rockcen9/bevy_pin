@@ -119,7 +119,7 @@ pub struct Bird {
 
 - This project is inspired by:
 
-- [bevy-inspector-egui](https://github.com/jakobhellermann/bevy-inspector-egui) - A huge inspiration for Bevy inspector tools and UI patterns.
+- [bevy-inspector-egui](https://github.com/jakobhellermann/bevy-inspector-egui) - A huge inspiration for Bevy inspector tools.
 
 - [Flecs Explorer](https://www.flecs.dev/explorer/) - Real-time ECS data visualization and debugging.
 
