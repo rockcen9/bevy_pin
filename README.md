@@ -28,13 +28,13 @@ cargo run
 
 ## [Changelog](./CHANGELOG.md)
 
+### [0.1.5] - 2026-04-08
+
+- feat: spawn new scene
+
 ### [0.1.4] - 2026-04-07
 
-- Query history
-
-### [0.1.3] - 2026-04-07
-
-- Update component data
+- feat: query history
 
 ## Features
 
@@ -90,7 +90,7 @@ pub struct Bird { /* ... */ }
 - [x] View component data
 - [x] Edit component data
 - [x] Pick from query history
-- [ ] Spawn entity
+- [x] Spawn new scene
 - [ ] Add components to entities
 - [ ] Pin Entity by ID
 - [ ] Cache query history for the browser
