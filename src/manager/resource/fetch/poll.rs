@@ -2,11 +2,6 @@ use super::DiscoveredResources;
 use crate::manager::connection::ServerUrl;
 use crate::prelude::*;
 
-#[derive(Deserialize)]
-struct GetResourceResponse {
-    result: serde_json::Value,
-}
-
 #[derive(Component)]
 struct PollContext(String);
 
@@ -14,8 +9,7 @@ struct PollContext(String);
 struct PollTimer(Timer);
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins(BrpEndpointPlugin::<GetResourceResponse>::default())
-        .insert_resource(PollTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
+    app.insert_resource(PollTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
         .add_systems(
             Update,
             poll_resources
@@ -37,22 +31,13 @@ fn poll_resources(
 
     for entry in &resources.0 {
         let type_path = entry.type_path.clone();
-        let payload = serde_json::to_vec(&json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "world.get_resources",
-            "params": { "resource": type_path }
-        }))
-        .unwrap();
-
+        let req = commands.brp_get_resources(&server_url.0, &type_path);
         commands
-            .spawn((
-                BrpRequest::<GetResourceResponse>::new(&server_url.0, payload),
-                PollContext(type_path),
-            ))
+            .entity(req)
+            .insert(PollContext(type_path))
             .observe(
-                |trigger: On<Add, BrpResponse<GetResourceResponse>>,
-                 query: Query<(&BrpResponse<GetResourceResponse>, &PollContext)>,
+                |trigger: On<Add, RpcResponse<BrpGetResources>>,
+                 query: Query<(&RpcResponse<BrpGetResources>, &PollContext)>,
                  mut resources: ResMut<DiscoveredResources>,
                  mut commands: Commands| {
                     let entity = trigger.entity;

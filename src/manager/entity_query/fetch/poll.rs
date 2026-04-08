@@ -2,11 +2,6 @@ use super::DiscoveredComponents;
 use crate::manager::connection::ServerUrl;
 use crate::prelude::*;
 
-#[derive(Deserialize)]
-struct GetComponentsResponse {
-    result: serde_json::Value,
-}
-
 #[derive(Component)]
 struct PollContext {
     entity: u64,
@@ -18,8 +13,7 @@ struct PollContext {
 struct PollTimer(Timer);
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins(BrpEndpointPlugin::<GetComponentsResponse>::default())
-        .insert_resource(PollTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
+    app.insert_resource(PollTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
         .add_systems(Update, poll_components.run_if(in_state(Pause(false))));
 }
 
@@ -39,29 +33,23 @@ fn poll_components(
             continue;
         };
 
-        let payload = serde_json::to_vec(&json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "world.get_components",
-            "params": {
-                "entity": entry.entity,
-                "components": [name_type_path]
-            }
-        }))
-        .unwrap();
+        let req = commands.brp_get_components(
+            &server_url.0,
+            entry.entity,
+            &[name_type_path.clone()],
+            false,
+        );
 
         commands
-            .spawn((
-                BrpRequest::<GetComponentsResponse>::new(&server_url.0, payload),
-                PollContext {
-                    entity: entry.entity,
-                    query: entry.query.clone(),
-                    name_type_path: name_type_path.clone(),
-                },
-            ))
+            .entity(req)
+            .insert(PollContext {
+                entity: entry.entity,
+                query: entry.query.clone(),
+                name_type_path: name_type_path.clone(),
+            })
             .observe(
-                |trigger: On<Add, BrpResponse<GetComponentsResponse>>,
-                 q: Query<(&BrpResponse<GetComponentsResponse>, &PollContext)>,
+                |trigger: On<Add, RpcResponse<BrpGetComponents>>,
+                 q: Query<(&RpcResponse<BrpGetComponents>, &PollContext)>,
                  mut components: ResMut<DiscoveredComponents>,
                  mut commands: Commands| {
                     let ecs_entity = trigger.entity;
@@ -76,6 +64,7 @@ fn poll_components(
                             .and_then(|m| m.get(&ctx.name_type_path))
                         {
                             if let Some(entry) = components
+                                .bypass_change_detection()
                                 .0
                                 .iter_mut()
                                 .find(|e| e.entity == ctx.entity && e.query == ctx.query)
@@ -83,6 +72,7 @@ fn poll_components(
                                 if entry.value.as_ref() != Some(value) {
                                     debug!("Name entity {}: value: {:#}", ctx.entity, value);
                                     entry.value = Some(value.clone());
+                                    components.set_changed();
                                 }
                             }
                         }

@@ -56,15 +56,11 @@ pub enum ConnectionState {
     Disconnected,
 }
 
-#[derive(Deserialize)]
-struct HeartbeatResponse {}
-
 #[derive(Resource)]
 struct HeartbeatTimer(Timer);
 
 pub fn plugin(app: &mut App) {
     app.init_resource::<ServerUrl>()
-        .add_plugins(BrpEndpointPlugin::<HeartbeatResponse>::default())
         .insert_resource(HeartbeatTimer(Timer::from_seconds(
             1.0,
             TimerMode::Repeating,
@@ -88,18 +84,12 @@ fn send_heartbeat(
         return;
     }
 
-    let payload = serde_json::to_vec(&json!({
-        "jsonrpc": "2.0",
-        "id": 0,
-        "method": "world.get"
-    }))
-    .unwrap();
-
+    let req = commands.brp_heartbeat(&server_url.0);
     commands
-        .spawn(BrpRequest::<HeartbeatResponse>::new(&server_url.0, payload))
+        .entity(req)
         .observe(
-            |trigger: On<Add, BrpResponse<HeartbeatResponse>>,
-             query: Query<&BrpResponse<HeartbeatResponse>>,
+            |trigger: On<Add, RpcResponse<BrpHeartbeat>>,
+             query: Query<&RpcResponse<BrpHeartbeat>>,
              current: Res<State<ConnectionState>>,
              mut next_state: ResMut<NextState<ConnectionState>>,
              mut commands: Commands| {

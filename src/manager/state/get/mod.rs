@@ -4,8 +4,6 @@ mod discovery;
 mod poll;
 mod variants;
 
-pub use poll::InsertResourceResponse;
-
 pub struct StateEntry {
     pub label: String,
     pub state_type_path: String,

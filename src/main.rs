@@ -34,6 +34,8 @@ fn main() -> AppExit {
                     "bevy_pin::manager::connection::reconnect=warn,",
                     "bevy_pin::manager::new_scene::spawned=warn,",
                     "bevy_pin::manager::entity_query::component_data=warn,",
+                    "bevy_pin::manager::entity_query::entity_list::ui=warn,",
+                    "bevy_pin::manager::entity_query::fetch::discovery=warn,",
                 ),
                 default = bevy::log::DEFAULT_FILTER
             ),
@@ -119,11 +121,11 @@ mod dogfooding {
             .insert("Access-Control-Allow-Headers", "Content-Type");
 
         // add remote plugin
-        app.add_plugins(RemotePlugin::default()); //
+        app.add_plugins(RemotePlugin::default());
         app.add_plugins(
             RemoteHttpPlugin::default()
                 .with_headers(cors_headers)
-                .with_port(15703),
+                .with_port(15703), // default port number + 1
         );
     }
 }

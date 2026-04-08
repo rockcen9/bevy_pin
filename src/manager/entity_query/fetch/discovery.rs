@@ -1,18 +1,7 @@
 use super::{ComponentEntry, DiscoveredComponents, TriggeredDiscoveries};
-use crate::manager::entity_query::query::ComponentQueries;
 use crate::manager::connection::ServerUrl;
+use crate::manager::entity_query::query::ComponentQueries;
 use crate::prelude::*;
-
-#[derive(Deserialize)]
-struct WorldQueryResponse {
-    result: Vec<QueryResultEntry>,
-}
-
-#[derive(Deserialize)]
-struct QueryResultEntry {
-    entity: u64,
-    components: serde_json::Value,
-}
 
 #[derive(Component)]
 struct DiscoveryContext {
@@ -25,9 +14,8 @@ struct DiscoveryContext {
 struct DiscoveryRefreshTimer(Timer);
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins(BrpEndpointPlugin::<WorldQueryResponse>::default())
-        .insert_resource(DiscoveryRefreshTimer(Timer::from_seconds(
-            2.0,
+    app.insert_resource(DiscoveryRefreshTimer(Timer::from_seconds(
+            1.0,
             TimerMode::Repeating,
         )))
         .add_systems(Update, (refresh_discovery, trigger_discovery).chain());
@@ -63,35 +51,30 @@ fn trigger_discovery(
         let with_names = entry.with_names();
         let without_names = entry.without_names();
 
-        let payload = serde_json::to_vec(&json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "world.query",
-            "params": {
-                "data": { "components": [], "option": "all", "has": [] },
-                "filter": { "with": [], "without": [] },
-                "strict": false
-            }
-        }))
-        .unwrap();
-
         debug!(
             "Sending world.query for '{}' (with={:?}, without={:?})",
             raw, with_names, without_names
         );
 
+        let req = commands.brp_world_query(
+            &server_url.0,
+            json!({
+                "data": { "components": [], "option": "all", "has": [] },
+                "filter": { "with": [], "without": [] },
+                "strict": false
+            }),
+        );
+
         commands
-            .spawn((
-                BrpRequest::<WorldQueryResponse>::new(&server_url.0, payload),
-                DiscoveryContext {
-                    raw,
-                    with_names,
-                    without_names,
-                },
-            ))
+            .entity(req)
+            .insert(DiscoveryContext {
+                raw,
+                with_names,
+                without_names,
+            })
             .observe(
-                |trigger: On<Add, BrpResponse<WorldQueryResponse>>,
-                 q: Query<(&BrpResponse<WorldQueryResponse>, &DiscoveryContext)>,
+                |trigger: On<Add, RpcResponse<BrpWorldQuery>>,
+                 q: Query<(&RpcResponse<BrpWorldQuery>, &DiscoveryContext)>,
                  mut components: ResMut<DiscoveredComponents>,
                  mut commands: Commands| {
                     let ecs_entity = trigger.entity;
@@ -143,6 +126,21 @@ fn trigger_discovery(
                             discovered.len()
                         );
 
+                        // Remove entities no longer returned by this query (avoid
+                        // touching the resource if nothing would change)
+                        let discovered_ids: HashSet<u64> =
+                            discovered.iter().map(|(id, _)| *id).collect();
+                        let has_stale = components
+                            .0
+                            .iter()
+                            .any(|e| e.query == ctx.raw && !discovered_ids.contains(&e.entity));
+                        if has_stale {
+                            components.0.retain(|e| {
+                                e.query != ctx.raw || discovered_ids.contains(&e.entity)
+                            });
+                            debug!("world.query '{}': pruned stale entities", ctx.raw);
+                        }
+
                         for (entity_id, name_type_path) in discovered {
                             if components
                                 .0
@@ -169,10 +167,8 @@ fn trigger_discovery(
                     commands.entity(ecs_entity).despawn();
                 },
             )
-            .observe(
-                |trigger: On<Add, TimeoutError>, mut commands: Commands| {
-                    commands.entity(trigger.entity).despawn();
-                },
-            );
+            .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+                commands.entity(trigger.entity).despawn();
+            });
     }
 }

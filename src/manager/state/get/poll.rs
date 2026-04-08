@@ -2,16 +2,6 @@ use super::DiscoveredStates;
 use crate::manager::connection::ServerUrl;
 use crate::prelude::*;
 
-#[derive(Deserialize)]
-struct GetResourceResponse {
-    result: serde_json::Value,
-}
-
-#[derive(Deserialize)]
-pub struct InsertResourceResponse {
-    pub result: serde_json::Value,
-}
-
 #[derive(Component)]
 struct PollContext(String);
 
@@ -19,9 +9,7 @@ struct PollContext(String);
 struct PollTimer(Timer);
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins(BrpEndpointPlugin::<GetResourceResponse>::default())
-        .add_plugins(BrpEndpointPlugin::<InsertResourceResponse>::default())
-        .insert_resource(PollTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
+    app.insert_resource(PollTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
         .add_systems(Update, poll_states.run_if(in_state(Pause(false))));
 }
 
@@ -38,22 +26,13 @@ fn poll_states(
 
     for entry in &states.0 {
         let state_resource = entry.state_resource.clone();
-        let payload = serde_json::to_vec(&json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "world.get_resources",
-            "params": { "resource": state_resource }
-        }))
-        .unwrap();
-
+        let req = commands.brp_get_resources(&server_url.0, &state_resource);
         commands
-            .spawn((
-                BrpRequest::<GetResourceResponse>::new(&server_url.0, payload),
-                PollContext(state_resource),
-            ))
+            .entity(req)
+            .insert(PollContext(state_resource))
             .observe(
-                |trigger: On<Add, BrpResponse<GetResourceResponse>>,
-                 query: Query<(&BrpResponse<GetResourceResponse>, &PollContext)>,
+                |trigger: On<Add, RpcResponse<BrpGetResources>>,
+                 query: Query<(&RpcResponse<BrpGetResources>, &PollContext)>,
                  mut states: ResMut<DiscoveredStates>,
                  mut commands: Commands| {
                     let entity = trigger.entity;
@@ -82,4 +61,3 @@ fn poll_states(
             );
     }
 }
-

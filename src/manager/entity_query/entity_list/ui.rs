@@ -1,9 +1,10 @@
 use super::super::fetch::{DiscoveredComponents, TriggeredDiscoveries};
+use crate::manager::connection::ServerUrl;
 use crate::manager::entity_query::query::ComponentQueries;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
-    COLOR_HEADER_BG, COLOR_LABEL_SECONDARY as COLOR_ENTITY_ID, COLOR_LABEL_TERTIARY as COLOR_VALUE,
-    COLOR_PANEL_BG, COLOR_ROW_HOVER, COLOR_ROW_SELECTED, COLOR_TITLE,
+    COLOR_BUTTON_BG, COLOR_BUTTON_HOVER, COLOR_HEADER_BG, COLOR_INPUT_TEXT, COLOR_PANEL_BG,
+    COLOR_ROW_SELECTED, COLOR_TITLE,
 };
 use crate::ui_layout::theme::widgets::{close_button, scrollable_list, ScrollableContainer};
 use bevy::ecs::schedule::common_conditions::resource_changed;
@@ -42,20 +43,24 @@ pub struct SelectedRow;
 #[derive(Component, Clone, Default)]
 struct CloseButton(String);
 
+#[derive(Component, Clone)]
+struct DeleteEntityButton(u64);
+
 pub fn plugin(app: &mut App) {
-    app.add_observer(on_entity_list_panel_added);
-    app.add_observer(on_entity_row_added);
-    app.add_systems(
-        Update,
-        (
-            spawn_panels.run_if(resource_changed::<ComponentQueries>),
-            spawn_entity_rows,
-            update_entity_rows,
-            handle_close_button,
-            handle_row_selection,
-            update_row_hover,
-        ),
-    );
+    app.add_observer(on_entity_list_panel_added)
+        .add_observer(on_entity_row_added)
+        .add_systems(
+            Update,
+            (
+                spawn_panels.run_if(resource_changed::<ComponentQueries>),
+                spawn_entity_rows,
+                update_entity_rows,
+                handle_close_button,
+                handle_delete_entity_button,
+                handle_row_selection,
+                update_row_hover,
+            ),
+        );
 }
 
 fn component_panel(title: String) -> impl Scene {
@@ -98,30 +103,37 @@ fn component_panel(title: String) -> impl Scene {
 
 fn entity_row(entity_id: u64, query: String, value_str: String) -> impl Scene {
     let index_label = crate::utils::entity_display_label(entity_id);
+    let label = if value_str.is_empty() {
+        index_label
+    } else {
+        format!("{index_label}  {value_str}")
+    };
     bsn! {
-        Button
         Node {
             flex_direction: FlexDirection::Row,
-            column_gap: Val::Px(8.0),
             align_items: AlignItems::Center,
-            padding: UiRect::axes(Val::Px(6.0), Val::Px(3.0)),
-            border_radius: BorderRadius::all(Val::Px(4.0)),
-        }
-        BackgroundColor(Color::NONE)
-        ComponentEntityRow {
-            entity: { entity_id },
-            query: { query.clone() },
+            width: Val::Percent(100.0),
+            column_gap: Val::Px(4.0),
         }
         Children [
+            close_button(DeleteEntityButton(entity_id)),
             (
-                Text::new( index_label.clone() )
-                template(|_| Ok(TextFont::from_font_size(13.0)))
-                TextColor(COLOR_ENTITY_ID)
-            ),
-            (
-                Text::new( value_str.clone() )
-                template(|_| Ok(TextFont::from_font_size(13.0)))
-                TextColor(COLOR_VALUE)
+                Button
+                Node {
+                    padding: UiRect::axes(Val::Px(10.0), Val::Px(6.0)),
+                    border_radius: BorderRadius::all(Val::Px(4.0)),
+                    flex_grow: 1.0,
+                }
+                BackgroundColor(COLOR_BUTTON_BG)
+                ComponentEntityRow {
+                    entity: { entity_id },
+                    query: { query.clone() },
+                }
+                Children [(
+                    template(move |_| Ok(Text::new(label.clone())))
+                    template(|_| Ok(TextFont::from_font_size(13.0)))
+                    TextColor(COLOR_INPUT_TEXT)
+                )]
             ),
         ]
     }
@@ -181,7 +193,7 @@ fn spawn_entity_rows(
     mut commands: Commands,
     components: Res<DiscoveredComponents>,
     containers: Query<(Entity, &ScrollableContainer)>,
-    rows: Query<&ComponentEntityRow>,
+    rows: Query<(Entity, &ComponentEntityRow, &ChildOf)>,
 ) {
     if !components.is_changed() {
         return;
@@ -192,8 +204,21 @@ fn spawn_entity_rows(
         components.0.len()
     );
 
+    // Despawn rows for entities no longer in DiscoveredComponents
+    let valid: HashSet<(u64, &str)> = components
+        .0
+        .iter()
+        .map(|e| (e.entity, e.query.as_str()))
+        .collect();
+    for (_, row, child_of) in &rows {
+        if !valid.contains(&(row.entity, row.query.as_str())) {
+            debug!("spawn_entity_rows: removing stale row entity={} query='{}'", row.entity, row.query);
+            commands.entity(child_of.parent()).despawn();
+        }
+    }
+
     let existing: HashSet<(u64, &str)> =
-        rows.iter().map(|r| (r.entity, r.query.as_str())).collect();
+        rows.iter().map(|(_, r, _)| (r.entity, r.query.as_str())).collect();
 
     for entry in &components.0 {
         if existing.contains(&(entry.entity, entry.query.as_str())) {
@@ -238,14 +263,20 @@ fn update_entity_rows(
         else {
             continue;
         };
-        let Some(&value_child) = children.get(1) else {
+        let Some(&text_child) = children.get(0) else {
             continue;
         };
-        let Ok(mut text) = texts.get_mut(value_child) else {
+        let Ok(mut text) = texts.get_mut(text_child) else {
             continue;
         };
-        let new_val = entry.value.as_ref().map(value_summary).unwrap_or_default();
-        text.set_if_neq(Text(new_val));
+        let index_label = crate::utils::entity_display_label(row.entity);
+        let value_str = entry.value.as_ref().map(value_summary).unwrap_or_default();
+        let new_label = if value_str.is_empty() {
+            index_label
+        } else {
+            format!("{index_label}  {value_str}")
+        };
+        text.set_if_neq(Text(new_label));
     }
 }
 
@@ -276,6 +307,43 @@ fn handle_close_button(
 }
 
 
+fn handle_delete_entity_button(
+    buttons: Query<(&Interaction, &DeleteEntityButton), Changed<Interaction>>,
+    server_url: Res<ServerUrl>,
+    mut components: ResMut<DiscoveredComponents>,
+    mut commands: Commands,
+) {
+    for (interaction, btn) in &buttons {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        let entity_id = btn.0;
+        debug!("handle_delete_entity_button: despawning entity #{}", entity_id);
+        let req = commands.brp_despawn_entity(&server_url.0, entity_id);
+        commands
+            .entity(req)
+            .observe(
+                move |trigger: On<Add, RpcResponse<BrpMutate>>,
+                      query: Query<&RpcResponse<BrpMutate>>,
+                      mut commands: Commands| {
+                    let entity = trigger.entity;
+                    if let Ok(response) = query.get(entity) {
+                        match &response.data {
+                            Ok(_) => info!("despawn_entity #{} ok", entity_id),
+                            Err(e) => error!("despawn_entity #{} failed: {}", entity_id, e),
+                        }
+                    }
+                    commands.entity(entity).despawn();
+                },
+            )
+            .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+                commands.entity(trigger.entity).despawn();
+            });
+
+        components.0.retain(|e| e.entity != entity_id);
+    }
+}
+
 fn on_entity_row_added(trigger: On<Add, ComponentEntityRow>, mut commands: Commands) {
     commands
         .entity(trigger.entity)
@@ -297,7 +365,7 @@ fn on_row_selected_removed(
     mut backgrounds: Query<&mut BackgroundColor>,
 ) {
     if let Ok(mut bg) = backgrounds.get_mut(trigger.entity) {
-        bg.set_if_neq(BackgroundColor(Color::NONE));
+        bg.set_if_neq(BackgroundColor(COLOR_BUTTON_BG));
     }
 }
 
@@ -328,8 +396,8 @@ fn update_row_hover(
             continue;
         }
         let new_color = match interaction {
-            Interaction::Hovered => COLOR_ROW_HOVER,
-            _ => Color::NONE,
+            Interaction::Hovered => COLOR_BUTTON_HOVER,
+            _ => COLOR_BUTTON_BG,
         };
         bg.set_if_neq(BackgroundColor(new_color));
     }

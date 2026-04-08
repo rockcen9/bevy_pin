@@ -14,18 +14,6 @@ use crate::ui_layout::theme::palette::{
 };
 use crate::ui_layout::theme::widgets::{scrollable_list, ScrollableContainer};
 
-// ── BRP ────────────────────────────────────────────────────────────────────
-
-#[derive(Deserialize)]
-struct GetComponentResponse {
-    result: serde_json::Value,
-}
-
-#[derive(Deserialize)]
-struct MutateComponentResponse {
-    result: serde_json::Value,
-}
-
 #[derive(Component)]
 struct GetComponentCtx {
     entity_id: u64,
@@ -90,9 +78,7 @@ pub fn inspector_panel() -> impl Scene {
 }
 
 pub fn plugin(app: &mut App) {
-    app.add_plugins(BrpEndpointPlugin::<GetComponentResponse>::default())
-        .add_plugins(BrpEndpointPlugin::<MutateComponentResponse>::default())
-        .init_resource::<InspectorState>()
+    app.init_resource::<InspectorState>()
         .insert_resource(InspectorPollTimer(Timer::from_seconds(
             1.0,
             TimerMode::Repeating,
@@ -122,7 +108,7 @@ fn fetch_on_component_selection(
     let current = selected
         .single()
         .ok()
-        .and_then(|row| component_data.entity_id.map(|id| (id, row.type_path.clone())));
+        .and_then(|row| component_data.entity_id().map(|id| (id, row.type_path.clone())));
 
     if current == *last {
         return;
@@ -139,29 +125,13 @@ fn fetch_on_component_selection(
     state.entity_id = Some(entity_id);
     state.type_path = Some(type_path.clone());
 
-    let payload = serde_json::to_vec(&json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "world.get_components",
-        "params": {
-            "entity": entity_id,
-            "components": [type_path],
-            "strict": false
-        }
-    }))
-    .unwrap();
-
+    let req = commands.brp_get_components(&server_url.0, entity_id, &[type_path.clone()], false);
     commands
-        .spawn((
-            BrpRequest::<GetComponentResponse>::new(&server_url.0, payload),
-            GetComponentCtx {
-                entity_id,
-                type_path,
-            },
-        ))
+        .entity(req)
+        .insert(GetComponentCtx { entity_id, type_path })
         .observe(
-            |trigger: On<Add, BrpResponse<GetComponentResponse>>,
-             q: Query<(&BrpResponse<GetComponentResponse>, &GetComponentCtx)>,
+            |trigger: On<Add, RpcResponse<BrpGetComponents>>,
+             q: Query<(&RpcResponse<BrpGetComponents>, &GetComponentCtx)>,
              mut state: ResMut<InspectorState>,
              mut commands: Commands| {
                 let ecs_entity = trigger.entity;
@@ -206,29 +176,13 @@ fn poll_inspector_fields(
         return;
     };
 
-    let payload = serde_json::to_vec(&json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "world.get_components",
-        "params": {
-            "entity": entity_id,
-            "components": [type_path],
-            "strict": false
-        }
-    }))
-    .unwrap();
-
+    let req = commands.brp_get_components(&server_url.0, entity_id, &[type_path.clone()], false);
     commands
-        .spawn((
-            BrpRequest::<GetComponentResponse>::new(&server_url.0, payload),
-            GetComponentCtx {
-                entity_id,
-                type_path,
-            },
-        ))
+        .entity(req)
+        .insert(GetComponentCtx { entity_id, type_path })
         .observe(
-            |trigger: On<Add, BrpResponse<GetComponentResponse>>,
-             q: Query<(&BrpResponse<GetComponentResponse>, &GetComponentCtx)>,
+            |trigger: On<Add, RpcResponse<BrpGetComponents>>,
+             q: Query<(&RpcResponse<BrpGetComponents>, &GetComponentCtx)>,
              mut state: ResMut<InspectorState>,
              mut commands: Commands| {
                 let ecs_entity = trigger.entity;
@@ -436,24 +390,12 @@ fn mutate_component_field(
     url: &str,
     commands: &mut Commands,
 ) {
-    let payload = serde_json::to_vec(&json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "world.mutate_components",
-        "params": {
-            "entity": entity_id,
-            "component": type_path,
-            "path": field_path,
-            "value": value
-        }
-    }))
-    .unwrap();
-
+    let req = commands.brp_mutate_component(url, entity_id, &type_path, &field_path, value);
     commands
-        .spawn(BrpRequest::<MutateComponentResponse>::new(url, payload))
+        .entity(req)
         .observe(
-            |trigger: On<Add, BrpResponse<MutateComponentResponse>>,
-             query: Query<&BrpResponse<MutateComponentResponse>>,
+            |trigger: On<Add, RpcResponse<BrpMutate>>,
+             query: Query<&RpcResponse<BrpMutate>>,
              mut commands: Commands| {
                 let entity = trigger.entity;
                 if let Ok(response) = query.get(entity) {

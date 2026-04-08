@@ -1091,6 +1091,7 @@ dependencies = [
 name = "bevy_pin"
 version = "0.1.5"
 dependencies = [
+ "anyhow",
  "bevy",
  "brp_helper",
  "serde",
@@ -1745,8 +1746,7 @@ name = "brp_helper"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "crossbeam-channel",
- "ehttp",
+ "json_rpc_helper",
  "serde",
  "serde_json",
  "tracing",
@@ -3126,6 +3126,20 @@ checksum = "8c942ebf8e95485ca0d52d97da7c5a2c387d0e7f0ba4c35e93bfcaee045955b3"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "json_rpc_helper"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bevy",
+ "crossbeam-channel",
+ "ehttp",
+ "serde",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
