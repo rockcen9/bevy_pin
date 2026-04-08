@@ -5,7 +5,7 @@ pub use crate::{PausableSystems, Pause};
 pub use bevy::ecs::template::template;
 pub use bevy::platform::collections::{HashMap, HashSet};
 pub use bevy::prelude::*;
-pub use bevy::scene2::prelude::{Scene, *};
+pub use bevy::scene::prelude::Scene;
 #[allow(unused_imports)]
 pub use brp_helper::{
     BrpEndpointPlugin, BrpRequest, BrpResponse, RemoteHelperPlugin, RequestReceivedMarker,

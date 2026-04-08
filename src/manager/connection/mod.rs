@@ -70,9 +70,9 @@ pub fn plugin(app: &mut App) {
             TimerMode::Repeating,
         )))
         .add_systems(Update, send_heartbeat);
-    app.init_state::<ConnectionState>()
-        .register_type::<State<ConnectionState>>()
-        .register_type::<NextState<ConnectionState>>();
+
+    app.init_state::<ConnectionState>();
+
     app.add_systems(Startup, setup_connection_from_url);
     reconnect::plugin(app);
     ui::plugin(app);

@@ -7,10 +7,7 @@ use crate::prelude::*;
 pub const GAME_WIDTH: f32 = 1920.;
 pub const GAME_HEIGHT: f32 = 1080.;
 pub const GAME_VERSION: &str = env!("CARGO_PKG_VERSION");
-use bevy::{
-    input_focus::{InputDispatchPlugin, tab_navigation::TabNavigationPlugin},
-    ui_widgets::EditableTextInputPlugin,
-};
+use bevy::input_focus::tab_navigation::TabNavigationPlugin;
 
 use tracing_subscriber::field::MakeExt;
 fn main() -> AppExit {
@@ -83,11 +80,7 @@ fn main() -> AppExit {
     app.add_systems(Update, show_window_after_warmup);
     app.add_plugins(manager::plugin);
     app.add_plugins(ui_layout::plugin);
-    app.add_plugins((
-        EditableTextInputPlugin,
-        InputDispatchPlugin,
-        TabNavigationPlugin,
-    ));
+    app.add_plugins(TabNavigationPlugin);
     app.add_plugins(version::plugin);
 
     app.run()
