@@ -1,24 +1,15 @@
 use crate::manager::entity_query::entity_list::ui::{ComponentEntityRow, SelectedRow};
+use crate::manager::entity_query::fetch::DiscoveredComponents;
 use crate::manager::connection::ServerUrl;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
-    COLOR_HEADER_BG, COLOR_LABEL_DISABLED as COLOR_NO_DATA,
+    COLOR_HEADER_BG, COLOR_INPUT_TEXT, COLOR_LABEL_DISABLED as COLOR_NO_DATA,
     COLOR_LABEL_SECONDARY as COLOR_COMPONENT_NAME, COLOR_LABEL_TERTIARY as COLOR_EMPTY,
     COLOR_PANEL_BG, COLOR_ROW_HOVER, COLOR_ROW_SELECTED, COLOR_TITLE,
 };
-use crate::ui_layout::theme::widgets::{scrollable_list, ScrollableContainer};
-
-// ── BRP ────────────────────────────────────────────────────────────────────
-
-#[derive(Deserialize)]
-struct ListComponentsResponse {
-    result: Vec<String>,
-}
-
-#[derive(Deserialize)]
-struct CheckComponentsResponse {
-    result: serde_json::Value,
-}
+use crate::ui_layout::theme::widgets::{
+    close_button::CloseButtonWidget, scrollable_list, ScrollableContainer,
+};
 
 #[derive(Component)]
 struct ListComponentsCtx {
@@ -37,17 +28,38 @@ struct CheckComponentsCtx {
 pub struct InspectedEntity(pub Option<u64>);
 
 #[derive(Resource, Default)]
-pub struct ComponentDataState {
-    pub entity_id: Option<u64>,
-    pub type_paths: Vec<String>,
-    pub has_data: HashSet<String>, // type_paths with inspectable fields
-    pub ready: bool,               // true once has_data is resolved
+pub enum ComponentDataState {
+    #[default]
+    Idle,
+    /// Waiting for the initial `world.list_components` response.
+    Fetching {
+        entity_id: u64,
+    },
+    /// Component list (and has-data info) is known; poll keeps it fresh.
+    Ready {
+        entity_id: u64,
+        type_paths: Vec<String>,
+        has_data: HashSet<String>,
+    },
+}
+
+impl ComponentDataState {
+    pub fn entity_id(&self) -> Option<u64> {
+        match self {
+            Self::Idle => None,
+            Self::Fetching { entity_id } | Self::Ready { entity_id, .. } => Some(*entity_id),
+        }
+    }
 }
 
 #[derive(Resource)]
 struct ComponentDataPollTimer(Timer);
 
 // ── Marker Components ──────────────────────────────────────────────────────
+
+/// Marks the title text of the Component Data panel header.
+#[derive(Component, Clone, Default)]
+struct ComponentDataTitle;
 
 /// Marks a component name row in the Component Data panel.
 #[derive(Component, Clone)]
@@ -58,6 +70,13 @@ pub struct ComponentNameRow {
 /// Marker for the currently selected component name row.
 #[derive(Component)]
 pub struct SelectedComponent;
+
+/// Button that removes a component from its entity when pressed.
+#[derive(Component, Clone)]
+struct RemoveComponentButton {
+    entity_id: u64,
+    type_path: String,
+}
 
 // ── UI Components ──────────────────────────────────────────────────────────
 
@@ -84,6 +103,7 @@ pub fn component_data_panel() -> impl Scene {
                 }
                 BackgroundColor(COLOR_HEADER_BG)
                 Children [(
+                    ComponentDataTitle
                     Text::new("Component Data")
                     template(|_| Ok(TextFont::from_font_size(18.0)))
                     TextColor(COLOR_TITLE)
@@ -95,9 +115,7 @@ pub fn component_data_panel() -> impl Scene {
 }
 
 pub fn plugin(app: &mut App) {
-    app.add_plugins(BrpEndpointPlugin::<ListComponentsResponse>::default())
-        .add_plugins(BrpEndpointPlugin::<CheckComponentsResponse>::default())
-        .init_resource::<InspectedEntity>()
+    app.init_resource::<InspectedEntity>()
         .init_resource::<ComponentDataState>()
         .insert_resource(ComponentDataPollTimer(Timer::from_seconds(
             1.0,
@@ -110,8 +128,10 @@ pub fn plugin(app: &mut App) {
                 fetch_on_selection,
                 poll_component_list,
                 render_component_names.run_if(resource_changed::<ComponentDataState>),
+                update_panel_title,
                 handle_component_row_selection,
                 update_component_row_hover,
+                handle_remove_component_button,
             ),
         );
 }
@@ -136,33 +156,23 @@ fn fetch_on_selection(
     }
     debug!("fetch_on_selection: entity changed {:?} -> {:?}", *last, current_id);
     *last = current_id;
-    state.entity_id = current_id;
-    state.type_paths.clear();
-    state.has_data.clear();
-    state.ready = false;
 
     let Some(entity_id) = current_id else {
         debug!("fetch_on_selection: cleared (no entity selected)");
+        *state = ComponentDataState::Idle;
         return;
     };
+
     debug!("fetch_on_selection: fetching components for entity #{}", entity_id);
+    *state = ComponentDataState::Fetching { entity_id };
 
-    let payload = serde_json::to_vec(&json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "world.list_components",
-        "params": { "entity": entity_id }
-    }))
-    .unwrap();
-
+    let req = commands.brp_list_components(&server_url.0, entity_id);
     commands
-        .spawn((
-            BrpRequest::<ListComponentsResponse>::new(&server_url.0, payload),
-            ListComponentsCtx { entity_id },
-        ))
+        .entity(req)
+        .insert(ListComponentsCtx { entity_id })
         .observe(
-            |trigger: On<Add, BrpResponse<ListComponentsResponse>>,
-             q: Query<(&BrpResponse<ListComponentsResponse>, &ListComponentsCtx)>,
+            |trigger: On<Add, RpcResponse<BrpListComponents>>,
+             q: Query<(&RpcResponse<BrpListComponents>, &ListComponentsCtx)>,
              server_url: Res<ServerUrl>,
              mut state: ResMut<ComponentDataState>,
              mut commands: Commands| {
@@ -172,8 +182,8 @@ fn fetch_on_selection(
                     return;
                 };
 
-                if state.entity_id != Some(ctx.entity_id) {
-                    debug!("list_components response: stale (state={:?}, ctx={}), dropping", state.entity_id, ctx.entity_id);
+                if state.entity_id() != Some(ctx.entity_id) {
+                    debug!("list_components response: stale (state={:?}, ctx={}), dropping", state.entity_id(), ctx.entity_id);
                     commands.entity(ecs_entity).despawn();
                     return;
                 }
@@ -181,31 +191,18 @@ fn fetch_on_selection(
                 if let Ok(data) = &response.data {
                     let type_paths = data.result.clone();
                     debug!("list_components response: {} components for entity #{}", type_paths.len(), ctx.entity_id);
-                    state.type_paths = type_paths.clone();
 
-                    if type_paths.is_empty() {
-                        debug!("list_components: entity #{} has no components, marking ready", ctx.entity_id);
-                        state.ready = true;
-                    } else {
-                        let payload = serde_json::to_vec(&json!({
-                            "jsonrpc": "2.0",
-                            "id": 1,
-                            "method": "world.get_components",
-                            "params": {
-                                "entity": ctx.entity_id,
-                                "components": type_paths,
-                                "strict": false
-                            }
-                        }))
-                        .unwrap();
+                    *state = ComponentDataState::Ready {
+                        entity_id: ctx.entity_id,
+                        type_paths: type_paths.clone(),
+                        has_data: HashSet::new(),
+                    };
 
+                    if !type_paths.is_empty() {
+                        let req = commands.brp_get_components(&server_url.0, ctx.entity_id, &type_paths, false);
                         commands
-                            .spawn((
-                                BrpRequest::<CheckComponentsResponse>::new(&server_url.0, payload),
-                                CheckComponentsCtx {
-                                    entity_id: ctx.entity_id,
-                                },
-                            ))
+                            .entity(req)
+                            .insert(CheckComponentsCtx { entity_id: ctx.entity_id })
                             .observe(on_check_components_response)
                             .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
                                 commands.entity(trigger.entity).despawn();
@@ -232,26 +229,17 @@ fn poll_component_list(
         return;
     }
 
-    let Some(entity_id) = state.entity_id else {
+    let Some(entity_id) = state.entity_id() else {
         return;
     };
 
-    let payload = serde_json::to_vec(&json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "world.list_components",
-        "params": { "entity": entity_id }
-    }))
-    .unwrap();
-
+    let req = commands.brp_list_components(&server_url.0, entity_id);
     commands
-        .spawn((
-            BrpRequest::<ListComponentsResponse>::new(&server_url.0, payload),
-            ListComponentsCtx { entity_id },
-        ))
+        .entity(req)
+        .insert(ListComponentsCtx { entity_id })
         .observe(
-            |trigger: On<Add, BrpResponse<ListComponentsResponse>>,
-             q: Query<(&BrpResponse<ListComponentsResponse>, &ListComponentsCtx)>,
+            |trigger: On<Add, RpcResponse<BrpListComponents>>,
+             q: Query<(&RpcResponse<BrpListComponents>, &ListComponentsCtx)>,
              server_url: Res<ServerUrl>,
              mut state: ResMut<ComponentDataState>,
              mut commands: Commands| {
@@ -261,43 +249,47 @@ fn poll_component_list(
                     return;
                 };
 
-                if state.entity_id != Some(ctx.entity_id) {
+                if state.entity_id() != Some(ctx.entity_id) {
                     commands.entity(ecs_entity).despawn();
                     return;
                 }
 
                 if let Ok(data) = &response.data {
-                    let type_paths = data.result.clone();
+                    let new_type_paths = data.result.clone();
 
-                    if type_paths != state.type_paths {
-                        state.type_paths = type_paths.clone();
-                        state.has_data.retain(|k| type_paths.contains(k));
+                    // Check immutably first; only take DerefMut when data actually changes.
+                    let needs_update = match &*state {
+                        ComponentDataState::Ready { type_paths, .. } => *type_paths != new_type_paths,
+                        ComponentDataState::Fetching { .. } => true,
+                        ComponentDataState::Idle => false,
+                    };
+                    if needs_update {
+                        match &mut *state {
+                            ComponentDataState::Ready { type_paths, has_data, .. } => {
+                                has_data.retain(|k| new_type_paths.contains(k));
+                                *type_paths = new_type_paths.clone();
+                            }
+                            ComponentDataState::Fetching { entity_id } => {
+                                // Poll beat the initial fetch; transition to Ready.
+                                *state = ComponentDataState::Ready {
+                                    entity_id: *entity_id,
+                                    type_paths: new_type_paths.clone(),
+                                    has_data: HashSet::new(),
+                                };
+                            }
+                            ComponentDataState::Idle => {}
+                        }
                     }
 
-                    if !type_paths.is_empty() {
-                        let payload = serde_json::to_vec(&json!({
-                            "jsonrpc": "2.0",
-                            "id": 1,
-                            "method": "world.get_components",
-                            "params": {
-                                "entity": ctx.entity_id,
-                                "components": type_paths,
-                                "strict": false
-                            }
-                        }))
-                        .unwrap();
-
+                    if !new_type_paths.is_empty() {
+                        let req = commands.brp_get_components(&server_url.0, ctx.entity_id, &new_type_paths, false);
                         commands
-                            .spawn((
-                                BrpRequest::<CheckComponentsResponse>::new(&server_url.0, payload),
-                                CheckComponentsCtx {
-                                    entity_id: ctx.entity_id,
-                                },
-                            ))
+                            .entity(req)
+                            .insert(CheckComponentsCtx { entity_id: ctx.entity_id })
                             .observe(
-                                |trigger: On<Add, BrpResponse<CheckComponentsResponse>>,
+                                |trigger: On<Add, RpcResponse<BrpGetComponents>>,
                                  q: Query<(
-                                    &BrpResponse<CheckComponentsResponse>,
+                                    &RpcResponse<BrpGetComponents>,
                                     &CheckComponentsCtx,
                                 )>,
                                  mut state: ResMut<ComponentDataState>,
@@ -307,7 +299,7 @@ fn poll_component_list(
                                         commands.entity(ecs_entity).despawn();
                                         return;
                                     };
-                                    if state.entity_id != Some(ctx.entity_id) {
+                                    if state.entity_id() != Some(ctx.entity_id) {
                                         commands.entity(ecs_entity).despawn();
                                         return;
                                     }
@@ -327,13 +319,19 @@ fn poll_component_list(
                                                     new_has_data.insert(type_path.clone());
                                                 }
                                             }
-                                            if new_has_data != state.has_data {
-                                                state.has_data = new_has_data;
+                                            // Read immutably first; only take DerefMut if data
+                                            // actually changed (otherwise resource_changed fires
+                                            // and re-renders the list, clearing the selection).
+                                            let needs_update = matches!(&*state,
+                                                ComponentDataState::Ready { has_data, .. }
+                                                if *has_data != new_has_data
+                                            );
+                                            if needs_update {
+                                                if let ComponentDataState::Ready { has_data, .. } = &mut *state {
+                                                    *has_data = new_has_data;
+                                                }
                                             }
                                         }
-                                    }
-                                    if !state.ready {
-                                        state.ready = true;
                                     }
                                     commands.entity(ecs_entity).despawn();
                                 },
@@ -353,8 +351,8 @@ fn poll_component_list(
 }
 
 fn on_check_components_response(
-    trigger: On<Add, BrpResponse<CheckComponentsResponse>>,
-    q: Query<(&BrpResponse<CheckComponentsResponse>, &CheckComponentsCtx)>,
+    trigger: On<Add, RpcResponse<BrpGetComponents>>,
+    q: Query<(&RpcResponse<BrpGetComponents>, &CheckComponentsCtx)>,
     mut state: ResMut<ComponentDataState>,
     mut commands: Commands,
 ) {
@@ -364,7 +362,7 @@ fn on_check_components_response(
         return;
     };
 
-    if state.entity_id != Some(ctx.entity_id) {
+    if state.entity_id() != Some(ctx.entity_id) {
         commands.entity(ecs_entity).despawn();
         return;
     }
@@ -382,16 +380,50 @@ fn on_check_components_response(
                     new_has_data.insert(type_path.clone());
                 }
             }
-            if new_has_data != state.has_data {
-                state.has_data = new_has_data;
+            let needs_update = matches!(&*state,
+                ComponentDataState::Ready { has_data, .. }
+                if *has_data != new_has_data
+            );
+            if needs_update {
+                if let ComponentDataState::Ready { has_data, .. } = &mut *state {
+                    *has_data = new_has_data;
+                }
             }
         }
     }
 
-    if !state.ready {
-        state.ready = true;
-    }
     commands.entity(ecs_entity).despawn();
+}
+
+fn update_panel_title(
+    state: Res<ComponentDataState>,
+    discovered: Res<DiscoveredComponents>,
+    mut titles: Query<&mut Text, With<ComponentDataTitle>>,
+) {
+    let Ok(mut text) = titles.single_mut() else {
+        return;
+    };
+    let new_title = match state.entity_id() {
+        Some(id) => {
+            let display_name = discovered
+                .0
+                .iter()
+                .filter(|e| e.entity == id)
+                .find_map(|e| match e.value.as_ref()? {
+                    serde_json::Value::String(s) => Some(s.clone()),
+                    v => v.get("name").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                });
+            match display_name {
+                Some(name) => format!("{} {}", name, crate::utils::entity_display_label(id)),
+                None => format!("Entity {}", crate::utils::entity_display_label(id)),
+            }
+        }
+        None => "Component Data".to_string(),
+    };
+    if text.0 != new_title {
+        debug!("update_panel_title: '{}'", new_title);
+        text.0 = new_title;
+    }
 }
 
 fn render_component_names(
@@ -409,70 +441,99 @@ fn render_component_names(
         }
     }
 
-    if state.entity_id.is_none() {
-        let placeholder = commands
-            .spawn((
-                Text::new("Select an entity row"),
-                TextFont::from_font_size(13.0),
-                TextColor(COLOR_EMPTY),
-            ))
-            .id();
-        commands.entity(content_entity).add_child(placeholder);
-        return;
-    }
-
-    if !state.ready {
-        let loading = commands
-            .spawn((
-                Text::new("Loading..."),
-                TextFont::from_font_size(13.0),
-                TextColor(COLOR_EMPTY),
-            ))
-            .id();
-        commands.entity(content_entity).add_child(loading);
-        return;
-    }
-
-    for type_path in &state.type_paths {
-        let short_name = type_path
-            .split("::")
-            .last()
-            .unwrap_or(type_path)
-            .to_string();
-
-        let inspectable = state.has_data.contains(type_path);
-
-        let mut row_cmds = commands.spawn((
-            Node {
-                padding: UiRect::axes(Val::Px(6.0), Val::Px(3.0)),
-                border_radius: BorderRadius::all(Val::Px(4.0)),
-                ..default()
-            },
-            BackgroundColor(Color::NONE),
-            ComponentNameRow {
-                type_path: type_path.clone(),
-            },
-        ));
-
-        if inspectable {
-            row_cmds.insert(Button);
+    match &*state {
+        ComponentDataState::Idle => {
+            let placeholder = commands
+                .spawn((
+                    Text::new("Select an entity row"),
+                    TextFont::from_font_size(13.0),
+                    TextColor(COLOR_EMPTY),
+                ))
+                .id();
+            commands.entity(content_entity).add_child(placeholder);
         }
+        ComponentDataState::Fetching { .. } => {
+            let loading = commands
+                .spawn((
+                    Text::new("Loading..."),
+                    TextFont::from_font_size(13.0),
+                    TextColor(COLOR_EMPTY),
+                ))
+                .id();
+            commands.entity(content_entity).add_child(loading);
+        }
+        ComponentDataState::Ready { entity_id, type_paths, has_data, .. } => {
+            let entity_id = *entity_id;
+            for type_path in type_paths {
+                let short_name = type_path
+                    .split("::")
+                    .last()
+                    .unwrap_or(type_path)
+                    .to_string();
 
-        let text_color = if inspectable {
-            COLOR_COMPONENT_NAME
-        } else {
-            COLOR_NO_DATA
-        };
+                let inspectable = has_data.contains(type_path);
 
-        let row = row_cmds
-            .with_child((
-                Text::new(short_name),
-                TextFont::from_font_size(13.0),
-                TextColor(text_color),
-            ))
-            .id();
+                let text_color = if inspectable {
+                    COLOR_COMPONENT_NAME
+                } else {
+                    COLOR_NO_DATA
+                };
 
-        commands.entity(content_entity).add_child(row);
+                let close_btn = commands
+                    .spawn((
+                        Button,
+                        CloseButtonWidget,
+                        Node {
+                            width: Val::Px(16.0),
+                            height: Val::Px(16.0),
+                            border_radius: BorderRadius::all(Val::Px(3.0)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            flex_shrink: 0.0,
+                            ..default()
+                        },
+                        BackgroundColor(COLOR_HEADER_BG),
+                        RemoveComponentButton {
+                            entity_id,
+                            type_path: type_path.clone(),
+                        },
+                    ))
+                    .with_child((
+                        Text::new("X"),
+                        TextFont::from_font_size(10.0),
+                        TextColor(COLOR_INPUT_TEXT),
+                    ))
+                    .id();
+
+                let label = commands
+                    .spawn((
+                        Text::new(short_name),
+                        TextFont::from_font_size(13.0),
+                        TextColor(text_color),
+                    ))
+                    .id();
+
+                let mut row_cmds = commands.spawn((
+                    Node {
+                        padding: UiRect::axes(Val::Px(6.0), Val::Px(3.0)),
+                        border_radius: BorderRadius::all(Val::Px(4.0)),
+                        align_items: AlignItems::Center,
+                        column_gap: Val::Px(6.0),
+                        ..default()
+                    },
+                    BackgroundColor(Color::NONE),
+                    ComponentNameRow {
+                        type_path: type_path.clone(),
+                    },
+                ));
+                if inspectable {
+                    row_cmds.insert(Button);
+                }
+                let row = row_cmds.add_children(&[close_btn, label]).id();
+
+                commands.entity(content_entity).add_child(row);
+            }
+        }
     }
 }
 
@@ -512,6 +573,32 @@ fn handle_component_row_selection(
                 commands.entity(prev).remove::<SelectedComponent>();
             }
             commands.entity(entity).insert(SelectedComponent);
+        }
+    }
+}
+
+fn handle_remove_component_button(
+    buttons: Query<(&Interaction, &RemoveComponentButton), (Changed<Interaction>, With<Button>)>,
+    server_url: Res<ServerUrl>,
+    mut commands: Commands,
+) {
+    for (interaction, btn) in &buttons {
+        if *interaction == Interaction::Pressed {
+            let req = commands.brp_remove_components(
+                &server_url.0,
+                btn.entity_id,
+                &[btn.type_path.clone()],
+            );
+            commands
+                .entity(req)
+                .observe(
+                    |trigger: On<Add, RpcResponse<BrpMutate>>, mut commands: Commands| {
+                        commands.entity(trigger.entity).despawn();
+                    },
+                )
+                .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+                    commands.entity(trigger.entity).despawn();
+                });
         }
     }
 }

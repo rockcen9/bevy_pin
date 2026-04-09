@@ -16,9 +16,6 @@ pub struct SpawnEntry {
 #[derive(Resource, Default)]
 pub struct SpawnedEntities(pub Vec<SpawnEntry>);
 
-#[derive(Deserialize)]
-struct DespawnEntityResponse {}
-
 #[derive(Component, Clone)]
 pub struct SpawnedItem {
     pub type_name: String,
@@ -35,7 +32,6 @@ pub fn spawned_panel() -> impl Scene {
 
 pub fn plugin(app: &mut App) {
     app.init_resource::<SpawnedEntities>()
-        .add_plugins(BrpEndpointPlugin::<DespawnEntityResponse>::default())
         .add_systems(
             Update,
             (
@@ -153,19 +149,12 @@ fn handle_despawn_button_click(
             continue;
         }
         let entity_id = btn.0;
-        let payload = serde_json::to_vec(&json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "world.despawn_entity",
-            "params": { "entity": entity_id }
-        }))
-        .unwrap();
-
+        let req = commands.brp_despawn_entity(&server_url.0, entity_id);
         commands
-            .spawn(BrpRequest::<DespawnEntityResponse>::new(&server_url.0, payload))
+            .entity(req)
             .observe(
-                move |trigger: On<Add, BrpResponse<DespawnEntityResponse>>,
-                      query: Query<&BrpResponse<DespawnEntityResponse>>,
+                move |trigger: On<Add, RpcResponse<BrpMutate>>,
+                      query: Query<&RpcResponse<BrpMutate>>,
                       mut commands: Commands| {
                     let entity = trigger.entity;
                     if let Ok(response) = query.get(entity) {

@@ -1,13 +1,6 @@
 use crate::prelude::*;
 
-#[derive(Deserialize)]
-pub struct MutateResourceResponse {
-    pub result: serde_json::Value,
-}
-
-pub fn plugin(app: &mut App) {
-    app.add_plugins(BrpEndpointPlugin::<MutateResourceResponse>::default());
-}
+pub fn plugin(_app: &mut App) {}
 
 /// Mutate a single field within a resource by dot-separated path (e.g. `.deep_purple`).
 pub fn mutate_resource_field(
@@ -17,23 +10,12 @@ pub fn mutate_resource_field(
     url: &str,
     commands: &mut Commands,
 ) {
-    let payload = serde_json::to_vec(&json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "world.mutate_resources",
-        "params": {
-            "resource": type_path,
-            "path": field_path,
-            "value": value
-        }
-    }))
-    .unwrap();
-
+    let req = commands.brp_mutate_resource(url, &type_path, &field_path, value);
     commands
-        .spawn(BrpRequest::<MutateResourceResponse>::new(url, payload))
+        .entity(req)
         .observe(
-            |trigger: On<Add, BrpResponse<MutateResourceResponse>>,
-             query: Query<&BrpResponse<MutateResourceResponse>>,
+            |trigger: On<Add, RpcResponse<BrpMutate>>,
+             query: Query<&RpcResponse<BrpMutate>>,
              mut commands: Commands| {
                 let entity = trigger.entity;
                 if let Ok(response) = query.get(entity) {

@@ -28,25 +28,8 @@ struct SpawnEntityButton;
 #[derive(Resource, Default)]
 struct KnownComponents(HashMap<String, String>);
 
-#[derive(Deserialize)]
-struct SchemaResponse {
-    result: serde_json::Value,
-}
-
-#[derive(Deserialize)]
-struct SpawnEntityResponse {
-    result: SpawnEntityResult,
-}
-
-#[derive(Deserialize)]
-struct SpawnEntityResult {
-    entity: u64,
-}
-
 pub fn plugin(app: &mut App) {
     app.init_resource::<KnownComponents>()
-        .add_plugins(BrpEndpointPlugin::<SchemaResponse>::default())
-        .add_plugins(BrpEndpointPlugin::<SpawnEntityResponse>::default())
         .add_observer(on_panel_spawn)
         .add_systems(
             Update,
@@ -63,19 +46,12 @@ fn on_panel_spawn(
     mut commands: Commands,
     server_url: Res<ServerUrl>,
 ) {
-    let payload = serde_json::to_vec(&json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "registry.schema",
-        "params": {}
-    }))
-    .unwrap();
-
+    let req = commands.brp_registry_schema(&server_url.0, json!({}));
     commands
-        .spawn(BrpRequest::<SchemaResponse>::new(&server_url.0, payload))
+        .entity(req)
         .observe(
-            |trigger: On<Add, BrpResponse<SchemaResponse>>,
-             query: Query<&BrpResponse<SchemaResponse>>,
+            |trigger: On<Add, RpcResponse<BrpSchema>>,
+             query: Query<&RpcResponse<BrpSchema>>,
              mut known: ResMut<KnownComponents>,
              mut commands: Commands| {
                 let entity = trigger.entity;
@@ -298,20 +274,12 @@ fn resolve_type_path(input: &str, known: &KnownComponents) -> Option<String> {
 
 fn spawn_entity(type_path: String, url: &str, commands: &mut Commands) {
     let components = json!({ type_path.clone(): {} });
-
-    let payload = serde_json::to_vec(&json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "world.spawn_entity",
-        "params": { "components": components }
-    }))
-    .unwrap();
-
+    let req = commands.brp_spawn_entity(url, components);
     commands
-        .spawn(BrpRequest::<SpawnEntityResponse>::new(url, payload))
+        .entity(req)
         .observe(
-            move |trigger: On<Add, BrpResponse<SpawnEntityResponse>>,
-                  query: Query<&BrpResponse<SpawnEntityResponse>>,
+            move |trigger: On<Add, RpcResponse<BrpSpawnEntity>>,
+                  query: Query<&RpcResponse<BrpSpawnEntity>>,
                   mut spawned: ResMut<SpawnedEntities>,
                   mut inspected: ResMut<InspectedEntity>,
                   mut commands: Commands| {

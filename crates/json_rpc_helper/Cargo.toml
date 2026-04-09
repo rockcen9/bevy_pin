@@ -1,0 +1,18 @@
+[package]
+name = "json_rpc_helper"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true, features = ["debug"] }
+ehttp = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = { workspace = true }
+crossbeam-channel = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+
+[dev-dependencies]
+bevy = { workspace = true, features = ["debug"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }

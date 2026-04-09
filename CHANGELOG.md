@@ -3,6 +3,7 @@
 ### 🚀 Features
 
 - New scene
+
 ## [0.1.4] - 2026-04-07
 
 ### 🚀 Features
@@ -12,6 +13,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Release
+
 ## [0.1.3] - 2026-04-07
 
 ### 🚀 Features
@@ -21,6 +23,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Release
+
 ## [0.1.2] - 2026-04-06
 
 ### 🚀 Features
@@ -35,7 +38,7 @@
 
 ### 🚜 Refactor
 
-- Replace ehttp/channel fetch pattern with brp_helper crate
+- Replace ehttp/channel fetch pattern with json_rpc_helper crate
 - Remove unused makefiles and clean up Makefile targets
 
 ### 📚 Documentation
@@ -46,6 +49,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Release
+
 ## [0.1.1] - 2026-04-05
 
 ### 🐛 Bug Fixes

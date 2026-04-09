@@ -2,14 +2,8 @@ use super::{DiscoveredResources, ResourceEntry, ResourceScreenRoot};
 use crate::manager::connection::ServerUrl;
 use crate::prelude::*;
 
-#[derive(Deserialize)]
-struct ListResourcesResponse {
-    result: Vec<String>,
-}
-
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins(BrpEndpointPlugin::<ListResourcesResponse>::default())
-        .add_observer(on_add_resource_screen_root);
+    app.add_observer(on_add_resource_screen_root);
 }
 
 fn on_add_resource_screen_root(
@@ -17,24 +11,14 @@ fn on_add_resource_screen_root(
     mut commands: Commands,
     server_url: Res<ServerUrl>,
 ) {
-    let payload = serde_json::to_vec(&json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "world.list_resources",
-        "params": null
-    }))
-    .unwrap();
-
     debug!("Sending world.list_resources request");
 
+    let req = commands.brp_list_resources(&server_url.0);
     commands
-        .spawn(BrpRequest::<ListResourcesResponse>::new(
-            &server_url.0,
-            payload,
-        ))
+        .entity(req)
         .observe(
-            |trigger: On<Add, BrpResponse<ListResourcesResponse>>,
-             query: Query<&BrpResponse<ListResourcesResponse>>,
+            |trigger: On<Add, RpcResponse<BrpListResources>>,
+             query: Query<&RpcResponse<BrpListResources>>,
              mut resources: ResMut<DiscoveredResources>,
              mut commands: Commands| {
                 let entity = trigger.entity;

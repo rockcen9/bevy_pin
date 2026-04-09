@@ -1,7 +1,7 @@
 use crate::{manager::SidebarState, prelude::*};
 use std::sync::Arc;
 
-use super::get::{DiscoveredStates, InsertResourceResponse};
+use super::get::DiscoveredStates;
 use crate::manager::connection::ServerUrl;
 
 use crate::ui_layout::theme::palette::{
@@ -247,22 +247,16 @@ fn handle_state_button_press(
         };
 
         let variant = button.variant.to_string();
-        let payload = serde_json::to_vec(&json!({
-            "jsonrpc": "2.0",
-            "id": 3,
-            "method": "world.insert_resources",
-            "params": {
-                "resource": path,
-                "value": { "Pending": variant }
-            }
-        }))
-        .unwrap();
-
+        let req = commands.brp_insert_resources(
+            &server_url.0,
+            &path,
+            json!({ "Pending": variant }),
+        );
         commands
-            .spawn(BrpRequest::<InsertResourceResponse>::new(&server_url.0, payload))
+            .entity(req)
             .observe(
-                |trigger: On<Add, BrpResponse<InsertResourceResponse>>,
-                 query: Query<&BrpResponse<InsertResourceResponse>>,
+                |trigger: On<Add, RpcResponse<BrpMutate>>,
+                 query: Query<&RpcResponse<BrpMutate>>,
                  mut commands: Commands| {
                     let entity = trigger.entity;
                     if let Ok(response) = query.get(entity) {

@@ -1,38 +1,22 @@
 use super::DiscoveredStates;
 use crate::prelude::*;
 
-#[derive(Deserialize)]
-struct SchemaResponse {
-    result: serde_json::Value,
-}
-
 #[derive(Component)]
 struct VariantsContext(String);
 
-pub(super) fn plugin(app: &mut App) {
-    app.add_plugins(BrpEndpointPlugin::<SchemaResponse>::default());
-}
+pub(super) fn plugin(_app: &mut App) {}
 
 pub(super) fn fetch_variants(type_path: String, commands: &mut Commands, url: &str) {
     let crate_name = type_path.split("::").next().unwrap_or("").to_string();
     debug!("Sending registry.schema request for crate: {}", crate_name);
 
-    let payload = serde_json::to_vec(&json!({
-        "jsonrpc": "2.0",
-        "id": 2,
-        "method": "registry.schema",
-        "params": { "with_crates": [crate_name] }
-    }))
-    .unwrap();
-
+    let req = commands.brp_registry_schema(url, json!({ "with_crates": [crate_name] }));
     commands
-        .spawn((
-            BrpRequest::<SchemaResponse>::new(url, payload),
-            VariantsContext(type_path),
-        ))
+        .entity(req)
+        .insert(VariantsContext(type_path))
         .observe(
-            |trigger: On<Add, BrpResponse<SchemaResponse>>,
-             query: Query<(&BrpResponse<SchemaResponse>, &VariantsContext)>,
+            |trigger: On<Add, RpcResponse<BrpSchema>>,
+             query: Query<(&RpcResponse<BrpSchema>, &VariantsContext)>,
              mut states: ResMut<DiscoveredStates>,
              mut commands: Commands| {
                 let entity = trigger.entity;
