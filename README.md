@@ -28,13 +28,13 @@ cargo run
 
 ## [Changelog](./CHANGELOG.md)
 
+### [0.1.6] - 2026-04-07
+
+- feat: entity and component removal
+
 ### [0.1.5] - 2026-04-08
 
 - feat: spawn new scene
-
-### [0.1.4] - 2026-04-07
-
-- feat: query history
 
 ## Features
 
