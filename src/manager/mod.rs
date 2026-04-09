@@ -6,12 +6,13 @@ pub mod resource;
 
 pub mod connection;
 
-pub mod entity_query;
+pub mod entity_filter;
 
 pub mod new_scene;
 
 pub fn plugin(app: &mut App) {
     app.add_plugins(BrpPlugin);
+    app.add_plugins(BrpStreamPlugin);
 
     app.add_systems(Startup, |mut commands: Commands| {
         commands.spawn(Camera2d);
@@ -27,7 +28,7 @@ pub fn plugin(app: &mut App) {
 
     resource::plugin(app);
 
-    entity_query::plugin(app);
+    entity_filter::plugin(app);
 
     new_scene::plugin(app);
 }

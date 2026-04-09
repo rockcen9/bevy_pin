@@ -1,6 +1,6 @@
 use super::super::fetch::{DiscoveredComponents, TriggeredDiscoveries};
 use crate::manager::connection::ServerUrl;
-use crate::manager::entity_query::query::ComponentQueries;
+use crate::manager::entity_filter::query::ComponentQueries;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
     COLOR_BUTTON_BG, COLOR_BUTTON_HOVER, COLOR_HEADER_BG, COLOR_INPUT_TEXT, COLOR_PANEL_BG,

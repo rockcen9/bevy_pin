@@ -1,6 +1,6 @@
 use super::{ComponentEntry, DiscoveredComponents, TriggeredDiscoveries};
 use crate::manager::connection::ServerUrl;
-use crate::manager::entity_query::query::ComponentQueries;
+use crate::manager::entity_filter::query::ComponentQueries;
 use crate::prelude::*;
 
 #[derive(Component)]

@@ -4,7 +4,7 @@ use bevy::{
 };
 
 use crate::manager::connection::ServerUrl;
-use crate::manager::entity_query::component_data::InspectedEntity;
+use crate::manager::entity_filter::component_list::InspectedEntity;
 use crate::manager::new_scene::spawned::{SpawnEntry, SpawnedEntities};
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{

@@ -1,0 +1,23 @@
+[package]
+name = "brp_stream_helper"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+brp_helper = { workspace = true }
+stream_helper = { workspace = true }
+serde_json = { workspace = true }
+
+[[example]]
+name = "watch_list_components"
+path = "examples/watch_list_components.rs"
+
+[[example]]
+name = "watch_get_components"
+path = "examples/watch_get_components.rs"
+
+[dev-dependencies]
+bevy = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+tracing = { workspace = true }

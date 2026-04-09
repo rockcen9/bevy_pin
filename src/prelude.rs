@@ -13,5 +13,9 @@ pub use brp_helper::{
     BrpListResources, BrpMutate, BrpPlugin, BrpSchema, BrpSpawnEntity, BrpWorldQuery, RpcResponse,
     TimeoutError,
 };
+pub use brp_stream_helper::{
+    AbortStream, BrpGetComponentsWatch, BrpListComponentsWatch, BrpStreamCommandsExt,
+    BrpStreamPlugin, StreamData, StreamDisconnected,
+};
 pub use serde_json::{self, json};
 pub use webbrowser;
