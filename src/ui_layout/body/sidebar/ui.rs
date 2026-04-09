@@ -79,7 +79,7 @@ fn entity_query_button() -> impl Scene {
         }
         BackgroundColor(COLOR_MENU_NORMAL)
         Children [(
-            Text("Entity Query")
+            Text("Entity Filter")
             template(|_| Ok(TextFont::from_font_size(15.0)))
             TextColor(COLOR_LABEL_SECONDARY)
         )]

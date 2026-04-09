@@ -1,6 +1,6 @@
-use crate::manager::entity_query::entity_list::ui::{ComponentEntityRow, SelectedRow};
-use crate::manager::entity_query::fetch::DiscoveredComponents;
 use crate::manager::connection::ServerUrl;
+use crate::manager::entity_filter::entity_list::ui::{ComponentEntityRow, SelectedRow};
+use crate::manager::entity_filter::fetch::DiscoveredComponents;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
     COLOR_HEADER_BG, COLOR_INPUT_TEXT, COLOR_LABEL_DISABLED as COLOR_NO_DATA,
@@ -8,7 +8,7 @@ use crate::ui_layout::theme::palette::{
     COLOR_PANEL_BG, COLOR_ROW_HOVER, COLOR_ROW_SELECTED, COLOR_TITLE,
 };
 use crate::ui_layout::theme::widgets::{
-    close_button::CloseButtonWidget, scrollable_list, ScrollableContainer,
+    ScrollableContainer, close_button::CloseButtonWidget, scrollable_list,
 };
 
 #[derive(Component)]
@@ -23,7 +23,7 @@ struct CheckComponentsCtx {
 
 // ── State ──────────────────────────────────────────────────────────────────
 
-/// Set this to drive the component data panel from any context (entity_query or new_scene).
+/// Set this to drive the component list panel from any context (entity_query or new_scene).
 #[derive(Resource, Default)]
 pub struct InspectedEntity(pub Option<u64>);
 
@@ -31,11 +31,9 @@ pub struct InspectedEntity(pub Option<u64>);
 pub enum ComponentDataState {
     #[default]
     Idle,
-    /// Waiting for the initial `world.list_components` response.
-    Fetching {
-        entity_id: u64,
-    },
-    /// Component list (and has-data info) is known; poll keeps it fresh.
+    /// Waiting for the one-shot `world.list_components` response.
+    Fetching { entity_id: u64 },
+    /// Component list (and has-data info) is known; watch stream keeps it fresh.
     Ready {
         entity_id: u64,
         type_paths: Vec<String>,
@@ -52,16 +50,18 @@ impl ComponentDataState {
     }
 }
 
-#[derive(Resource)]
-struct ComponentDataPollTimer(Timer);
+/// Holds the ECS entity for the active `list_components+watch` stream.
+/// Despawning it cancels the stream.
+#[derive(Resource, Default)]
+struct ComponentListStreamEntity(Option<Entity>);
 
 // ── Marker Components ──────────────────────────────────────────────────────
 
-/// Marks the title text of the Component Data panel header.
+/// Marks the title text of the Component List panel header.
 #[derive(Component, Clone, Default)]
 struct ComponentDataTitle;
 
-/// Marks a component name row in the Component Data panel.
+/// Marks a component name row in the Component List panel.
 #[derive(Component, Clone)]
 pub struct ComponentNameRow {
     pub type_path: String,
@@ -73,9 +73,9 @@ pub struct SelectedComponent;
 
 /// Button that removes a component from its entity when pressed.
 #[derive(Component, Clone)]
-struct RemoveComponentButton {
-    entity_id: u64,
-    type_path: String,
+pub struct RemoveComponentButton {
+    pub entity_id: u64,
+    pub type_path: String,
 }
 
 // ── UI Components ──────────────────────────────────────────────────────────
@@ -104,7 +104,7 @@ pub fn component_data_panel() -> impl Scene {
                 BackgroundColor(COLOR_HEADER_BG)
                 Children [(
                     ComponentDataTitle
-                    Text::new("Component Data")
+                    Text::new("Component List")
                     template(|_| Ok(TextFont::from_font_size(18.0)))
                     TextColor(COLOR_TITLE)
                 )]
@@ -117,16 +117,12 @@ pub fn component_data_panel() -> impl Scene {
 pub fn plugin(app: &mut App) {
     app.init_resource::<InspectedEntity>()
         .init_resource::<ComponentDataState>()
-        .insert_resource(ComponentDataPollTimer(Timer::from_seconds(
-            1.0,
-            TimerMode::Repeating,
-        )))
+        .init_resource::<ComponentListStreamEntity>()
         .add_observer(on_component_name_row_added)
         .add_systems(
             Update,
             (
                 fetch_on_selection,
-                poll_component_list,
                 render_component_names.run_if(resource_changed::<ComponentDataState>),
                 update_panel_title,
                 handle_component_row_selection,
@@ -144,18 +140,31 @@ fn fetch_on_selection(
     server_url: Res<ServerUrl>,
     mut commands: Commands,
     mut state: ResMut<ComponentDataState>,
+    mut stream_entity: ResMut<ComponentListStreamEntity>,
     mut last: Local<Option<u64>>,
 ) {
     let from_row = selected.single().ok().map(|r| r.entity);
     let current_id = from_row.or(inspected.0);
     if inspected.is_changed() {
-        debug!("fetch_on_selection: InspectedEntity changed -> {:?}", inspected.0);
+        debug!(
+            "fetch_on_selection: InspectedEntity changed -> {:?}",
+            inspected.0
+        );
     }
     if current_id == *last {
         return;
     }
-    debug!("fetch_on_selection: entity changed {:?} -> {:?}", *last, current_id);
+    debug!(
+        "fetch_on_selection: entity changed {:?} -> {:?}",
+        *last, current_id
+    );
     *last = current_id;
+
+    // Cancel and despawn old watch stream entity.
+    if let Some(e) = stream_entity.0.take() {
+        debug!("fetch_on_selection: aborting previous stream {:?}", e);
+        commands.entity(e).insert(AbortStream);
+    }
 
     let Some(entity_id) = current_id else {
         debug!("fetch_on_selection: cleared (no entity selected)");
@@ -163,191 +172,197 @@ fn fetch_on_selection(
         return;
     };
 
-    debug!("fetch_on_selection: fetching components for entity #{}", entity_id);
+    debug!(
+        "fetch_on_selection: fetching components for entity #{}",
+        entity_id
+    );
     *state = ComponentDataState::Fetching { entity_id };
 
+    // One-shot to get the initial list (Fetching → Ready).
     let req = commands.brp_list_components(&server_url.0, entity_id);
     commands
         .entity(req)
         .insert(ListComponentsCtx { entity_id })
+        .observe(on_initial_list_response)
+        .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+            error!("on_initial_list_response: timed out for entity request");
+            commands.entity(trigger.entity).despawn();
+        });
+
+    // Watch stream for delta updates once Ready.
+    let stream = commands.brp_watch_list_components(&server_url.0, entity_id);
+    debug!(
+        "fetch_on_selection: spawned watch stream {:?} for entity #{}",
+        stream, entity_id
+    );
+    commands
+        .entity(stream)
         .observe(
-            |trigger: On<Add, RpcResponse<BrpListComponents>>,
-             q: Query<(&RpcResponse<BrpListComponents>, &ListComponentsCtx)>,
-             server_url: Res<ServerUrl>,
+            |trigger: On<Insert, StreamData<BrpListComponentsWatch>>,
+             query: Query<&StreamData<BrpListComponentsWatch>>,
              mut state: ResMut<ComponentDataState>,
+             server_url: Res<ServerUrl>,
              mut commands: Commands| {
-                let ecs_entity = trigger.entity;
-                let Ok((response, ctx)) = q.get(ecs_entity) else {
-                    commands.entity(ecs_entity).despawn();
+                let Ok(data) = query.get(trigger.entity) else {
                     return;
                 };
 
-                if state.entity_id() != Some(ctx.entity_id) {
-                    debug!("list_components response: stale (state={:?}, ctx={}), dropping", state.entity_id(), ctx.entity_id);
-                    commands.entity(ecs_entity).despawn();
-                    return;
-                }
+                for item in &data.0 {
+                    let added = &item.result.added;
+                    let removed = &item.result.removed;
+                    debug!("watch stream delta — added={added:?} removed={removed:?}");
 
-                if let Ok(data) = &response.data {
-                    let type_paths = data.result.clone();
-                    debug!("list_components response: {} components for entity #{}", type_paths.len(), ctx.entity_id);
-
-                    *state = ComponentDataState::Ready {
-                        entity_id: ctx.entity_id,
-                        type_paths: type_paths.clone(),
-                        has_data: HashSet::new(),
+                    let Some(entity_id) = state.entity_id() else {
+                        continue;
                     };
 
-                    if !type_paths.is_empty() {
-                        let req = commands.brp_get_components(&server_url.0, ctx.entity_id, &type_paths, false);
+                    let new_type_paths = match state.bypass_change_detection() {
+                        ComponentDataState::Ready { type_paths, .. } => {
+                            let mut paths = type_paths.clone();
+                            for r in removed {
+                                paths.retain(|p| p != r);
+                            }
+                            for a in added {
+                                if !paths.contains(a) {
+                                    paths.push(a.clone());
+                                }
+                            }
+                            paths
+                        }
+                        ComponentDataState::Fetching { .. } => {
+                            debug!("watch stream: still fetching initial list, ignoring delta");
+                            continue;
+                        }
+                        ComponentDataState::Idle => {
+                            error!(
+                                "watch stream: delta in Idle state — stream should not be active"
+                            );
+                            continue;
+                        }
+                    };
+
+                    let needs_update = match state.bypass_change_detection() {
+                        ComponentDataState::Ready { type_paths, .. } => {
+                            *type_paths != new_type_paths
+                        }
+                        _ => false,
+                    };
+                    if !needs_update {
+                        debug!("watch stream: delta produced no change, skipping");
+                        continue;
+                    }
+
+                    debug!(
+                        "watch stream: applying delta → {} components for entity #{}",
+                        new_type_paths.len(),
+                        entity_id
+                    );
+
+                    if let ComponentDataState::Ready {
+                        type_paths,
+                        has_data,
+                        ..
+                    } = &mut *state
+                    {
+                        has_data.retain(|k| new_type_paths.contains(k));
+                        *type_paths = new_type_paths.clone();
+                    }
+
+                    // One-shot has_data check for newly added paths only.
+                    if !added.is_empty() {
+                        debug!(
+                            "watch stream: has_data check for {} newly added path(s)",
+                            added.len()
+                        );
+                        let req =
+                            commands.brp_get_components(&server_url.0, entity_id, added, false);
                         commands
                             .entity(req)
-                            .insert(CheckComponentsCtx { entity_id: ctx.entity_id })
+                            .insert(CheckComponentsCtx { entity_id })
                             .observe(on_check_components_response)
                             .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+                                error!("watch stream: has_data check timed out");
                                 commands.entity(trigger.entity).despawn();
                             });
                     }
                 }
-
-                commands.entity(ecs_entity).despawn();
             },
         )
-        .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
-            commands.entity(trigger.entity).despawn();
+        .observe(|trigger: On<Add, StreamDisconnected>| {
+            warn!(
+                "Component list stream {:?} disconnected — server closed or network error",
+                trigger.entity
+            );
         });
+    stream_entity.0 = Some(stream);
 }
 
-fn poll_component_list(
-    time: Res<Time>,
-    mut timer: ResMut<ComponentDataPollTimer>,
-    state: Res<ComponentDataState>,
+/// Observer: handles the initial one-shot `world.list_components` response.
+/// Transitions state from `Fetching` to `Ready` and fires the first `has_data` check.
+fn on_initial_list_response(
+    trigger: On<Add, RpcResponse<BrpListComponents>>,
+    q: Query<(&RpcResponse<BrpListComponents>, &ListComponentsCtx)>,
     server_url: Res<ServerUrl>,
+    mut state: ResMut<ComponentDataState>,
     mut commands: Commands,
 ) {
-    if !timer.0.tick(time.delta()).just_finished() {
-        return;
-    }
-
-    let Some(entity_id) = state.entity_id() else {
+    let ecs_entity = trigger.entity;
+    let Ok((response, ctx)) = q.get(ecs_entity) else {
+        commands.entity(ecs_entity).despawn();
         return;
     };
 
-    let req = commands.brp_list_components(&server_url.0, entity_id);
-    commands
-        .entity(req)
-        .insert(ListComponentsCtx { entity_id })
-        .observe(
-            |trigger: On<Add, RpcResponse<BrpListComponents>>,
-             q: Query<(&RpcResponse<BrpListComponents>, &ListComponentsCtx)>,
-             server_url: Res<ServerUrl>,
-             mut state: ResMut<ComponentDataState>,
-             mut commands: Commands| {
-                let ecs_entity = trigger.entity;
-                let Ok((response, ctx)) = q.get(ecs_entity) else {
-                    commands.entity(ecs_entity).despawn();
-                    return;
-                };
+    if state.entity_id() != Some(ctx.entity_id) {
+        debug!(
+            "on_initial_list_response: stale (state={:?}, ctx={}), dropping",
+            state.entity_id(),
+            ctx.entity_id
+        );
+        commands.entity(ecs_entity).despawn();
+        return;
+    }
 
-                if state.entity_id() != Some(ctx.entity_id) {
-                    commands.entity(ecs_entity).despawn();
-                    return;
-                }
+    match &response.data {
+        Err(e) => error!(
+            "on_initial_list_response: server error for entity #{}: {e}",
+            ctx.entity_id
+        ),
+        Ok(data) => {
+            let type_paths = data.result.clone();
+            debug!(
+                "on_initial_list_response: {} components for entity #{}",
+                type_paths.len(),
+                ctx.entity_id
+            );
 
-                if let Ok(data) = &response.data {
-                    let new_type_paths = data.result.clone();
+            *state = ComponentDataState::Ready {
+                entity_id: ctx.entity_id,
+                type_paths: type_paths.clone(),
+                has_data: HashSet::new(),
+            };
 
-                    // Check immutably first; only take DerefMut when data actually changes.
-                    let needs_update = match &*state {
-                        ComponentDataState::Ready { type_paths, .. } => *type_paths != new_type_paths,
-                        ComponentDataState::Fetching { .. } => true,
-                        ComponentDataState::Idle => false,
-                    };
-                    if needs_update {
-                        match &mut *state {
-                            ComponentDataState::Ready { type_paths, has_data, .. } => {
-                                has_data.retain(|k| new_type_paths.contains(k));
-                                *type_paths = new_type_paths.clone();
-                            }
-                            ComponentDataState::Fetching { entity_id } => {
-                                // Poll beat the initial fetch; transition to Ready.
-                                *state = ComponentDataState::Ready {
-                                    entity_id: *entity_id,
-                                    type_paths: new_type_paths.clone(),
-                                    has_data: HashSet::new(),
-                                };
-                            }
-                            ComponentDataState::Idle => {}
-                        }
-                    }
+            if !type_paths.is_empty() {
+                debug!(
+                    "on_initial_list_response: firing has_data check for {} path(s)",
+                    type_paths.len()
+                );
+                let req =
+                    commands.brp_get_components(&server_url.0, ctx.entity_id, &type_paths, false);
+                commands
+                    .entity(req)
+                    .insert(CheckComponentsCtx {
+                        entity_id: ctx.entity_id,
+                    })
+                    .observe(on_check_components_response)
+                    .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+                        error!("on_check_components_response: timed out");
+                        commands.entity(trigger.entity).despawn();
+                    });
+            }
+        }
+    }
 
-                    if !new_type_paths.is_empty() {
-                        let req = commands.brp_get_components(&server_url.0, ctx.entity_id, &new_type_paths, false);
-                        commands
-                            .entity(req)
-                            .insert(CheckComponentsCtx { entity_id: ctx.entity_id })
-                            .observe(
-                                |trigger: On<Add, RpcResponse<BrpGetComponents>>,
-                                 q: Query<(
-                                    &RpcResponse<BrpGetComponents>,
-                                    &CheckComponentsCtx,
-                                )>,
-                                 mut state: ResMut<ComponentDataState>,
-                                 mut commands: Commands| {
-                                    let ecs_entity = trigger.entity;
-                                    let Ok((response, ctx)) = q.get(ecs_entity) else {
-                                        commands.entity(ecs_entity).despawn();
-                                        return;
-                                    };
-                                    if state.entity_id() != Some(ctx.entity_id) {
-                                        commands.entity(ecs_entity).despawn();
-                                        return;
-                                    }
-                                    if let Ok(data) = &response.data {
-                                        if let Some(components_map) =
-                                            data.result["components"].as_object()
-                                        {
-                                            let mut new_has_data: HashSet<String> =
-                                                HashSet::new();
-                                            for (type_path, value) in components_map {
-                                                let has_fields = match value {
-                                                    serde_json::Value::Null => false,
-                                                    serde_json::Value::Object(m) => !m.is_empty(),
-                                                    _ => true,
-                                                };
-                                                if has_fields {
-                                                    new_has_data.insert(type_path.clone());
-                                                }
-                                            }
-                                            // Read immutably first; only take DerefMut if data
-                                            // actually changed (otherwise resource_changed fires
-                                            // and re-renders the list, clearing the selection).
-                                            let needs_update = matches!(&*state,
-                                                ComponentDataState::Ready { has_data, .. }
-                                                if *has_data != new_has_data
-                                            );
-                                            if needs_update {
-                                                if let ComponentDataState::Ready { has_data, .. } = &mut *state {
-                                                    *has_data = new_has_data;
-                                                }
-                                            }
-                                        }
-                                    }
-                                    commands.entity(ecs_entity).despawn();
-                                },
-                            )
-                            .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
-                                commands.entity(trigger.entity).despawn();
-                            });
-                    }
-                }
-
-                commands.entity(ecs_entity).despawn();
-            },
-        )
-        .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
-            commands.entity(trigger.entity).despawn();
-        });
+    commands.entity(ecs_entity).despawn();
 }
 
 fn on_check_components_response(
@@ -367,27 +382,50 @@ fn on_check_components_response(
         return;
     }
 
-    if let Ok(data) = &response.data {
-        if let Some(components_map) = data.result["components"].as_object() {
-            let mut new_has_data: HashSet<String> = HashSet::new();
-            for (type_path, value) in components_map {
-                let has_fields = match value {
-                    serde_json::Value::Null => false,
-                    serde_json::Value::Object(m) => !m.is_empty(),
-                    _ => true,
-                };
-                if has_fields {
-                    new_has_data.insert(type_path.clone());
+    match &response.data {
+        Err(e) => error!(
+            "on_check_components_response: server error for entity #{}: {e}",
+            ctx.entity_id
+        ),
+        Ok(data) => {
+            let components_key = &data.result["components"];
+            if let Some(components_map) = components_key.as_object() {
+                let mut new_has_data: HashSet<String> = HashSet::new();
+                for (type_path, value) in components_map {
+                    let has_fields = match value {
+                        serde_json::Value::Null => false,
+                        serde_json::Value::Object(m) => !m.is_empty(),
+                        _ => true,
+                    };
+                    if has_fields {
+                        new_has_data.insert(type_path.clone());
+                    }
                 }
-            }
-            let needs_update = matches!(&*state,
-                ComponentDataState::Ready { has_data, .. }
-                if *has_data != new_has_data
-            );
-            if needs_update {
-                if let ComponentDataState::Ready { has_data, .. } = &mut *state {
-                    *has_data = new_has_data;
+                debug!(
+                    "on_check_components_response: {}/{} path(s) have data for entity #{}",
+                    new_has_data.len(),
+                    components_map.len(),
+                    ctx.entity_id
+                );
+                // Merge into has_data rather than replacing, so a delta check
+                // (covering only added paths) doesn't wipe previously-known entries.
+                let needs_update = matches!(&*state,
+                    ComponentDataState::Ready { has_data, .. }
+                    if !new_has_data.is_subset(has_data)
+                );
+                if needs_update {
+                    debug!("on_check_components_response: merging new has_data entries");
+                    if let ComponentDataState::Ready { has_data, .. } = &mut *state {
+                        has_data.extend(new_has_data);
+                    }
+                } else {
+                    debug!("on_check_components_response: no new has_data entries, skipping");
                 }
+            } else {
+                error!(
+                    "on_check_components_response: unexpected shape — no 'components' key: {:?}",
+                    data.result
+                );
             }
         }
     }
@@ -411,14 +449,17 @@ fn update_panel_title(
                 .filter(|e| e.entity == id)
                 .find_map(|e| match e.value.as_ref()? {
                     serde_json::Value::String(s) => Some(s.clone()),
-                    v => v.get("name").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                    v => v
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
                 });
             match display_name {
                 Some(name) => format!("{} {}", name, crate::utils::entity_display_label(id)),
                 None => format!("Entity {}", crate::utils::entity_display_label(id)),
             }
         }
-        None => "Component Data".to_string(),
+        None => "Component List".to_string(),
     };
     if text.0 != new_title {
         debug!("update_panel_title: '{}'", new_title);
@@ -431,9 +472,28 @@ fn render_component_names(
     state: Res<ComponentDataState>,
     content: Query<(Entity, Option<&Children>, &ScrollableContainer)>,
 ) {
-    let Some((content_entity, children, _)) = content.iter().find(|(_, _, c)| c.0 == "component-data") else {
+    let Some((content_entity, children, _)) =
+        content.iter().find(|(_, _, c)| c.0 == "component-data")
+    else {
         return;
     };
+    debug!(
+        "render_component_names: state={:?}",
+        match &*state {
+            ComponentDataState::Idle => "Idle".to_string(),
+            ComponentDataState::Fetching { entity_id } => format!("Fetching(#{})", entity_id),
+            ComponentDataState::Ready {
+                entity_id,
+                type_paths,
+                has_data,
+            } => format!(
+                "Ready(#{}, {} paths, {} with data)",
+                entity_id,
+                type_paths.len(),
+                has_data.len()
+            ),
+        }
+    );
 
     if let Some(children) = children {
         for child in children.iter() {
@@ -462,7 +522,12 @@ fn render_component_names(
                 .id();
             commands.entity(content_entity).add_child(loading);
         }
-        ComponentDataState::Ready { entity_id, type_paths, has_data, .. } => {
+        ComponentDataState::Ready {
+            entity_id,
+            type_paths,
+            has_data,
+            ..
+        } => {
             let entity_id = *entity_id;
             for type_path in type_paths {
                 let short_name = type_path
@@ -564,11 +629,18 @@ fn on_component_selected_removed(
 
 fn handle_component_row_selection(
     mut commands: Commands,
-    rows: Query<(Entity, &Interaction), (Changed<Interaction>, With<ComponentNameRow>)>,
+    rows: Query<
+        (Entity, &Interaction, &ComponentNameRow),
+        (Changed<Interaction>, With<ComponentNameRow>),
+    >,
     selected: Query<Entity, With<SelectedComponent>>,
 ) {
-    for (entity, interaction) in &rows {
+    for (entity, interaction, row) in &rows {
         if *interaction == Interaction::Pressed {
+            debug!(
+                "handle_component_row_selection: selected '{}'",
+                row.type_path
+            );
             for prev in &selected {
                 commands.entity(prev).remove::<SelectedComponent>();
             }
@@ -584,6 +656,10 @@ fn handle_remove_component_button(
 ) {
     for (interaction, btn) in &buttons {
         if *interaction == Interaction::Pressed {
+            debug!(
+                "handle_remove_component_button: removing '{}' from entity #{}",
+                btn.type_path, btn.entity_id
+            );
             let req = commands.brp_remove_components(
                 &server_url.0,
                 btn.entity_id,
@@ -592,11 +668,22 @@ fn handle_remove_component_button(
             commands
                 .entity(req)
                 .observe(
-                    |trigger: On<Add, RpcResponse<BrpMutate>>, mut commands: Commands| {
-                        commands.entity(trigger.entity).despawn();
+                    |trigger: On<Add, RpcResponse<BrpMutate>>,
+                     q: Query<&RpcResponse<BrpMutate>>,
+                     mut commands: Commands| {
+                        let ecs_entity = trigger.entity;
+                        if let Ok(response) = q.get(ecs_entity) {
+                            if let Err(e) = &response.data {
+                                error!("handle_remove_component_button: server error: {e}");
+                            } else {
+                                debug!("handle_remove_component_button: remove succeeded");
+                            }
+                        }
+                        commands.entity(ecs_entity).despawn();
                     },
                 )
                 .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+                    error!("handle_remove_component_button: remove request timed out");
                     commands.entity(trigger.entity).despawn();
                 });
         }

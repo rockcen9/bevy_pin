@@ -3,19 +3,20 @@ use bevy::{
     text::{EditableText, FontCx, LayoutCx, TextCursorStyle},
 };
 
-use crate::manager::entity_query::component_data::{
+use crate::manager::connection::ServerUrl;
+use crate::manager::entity_filter::component_list::{
     ComponentDataState, ComponentNameRow, SelectedComponent,
 };
-use crate::manager::connection::ServerUrl;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
     COLOR_HEADER_BG, COLOR_INPUT_BG, COLOR_INPUT_BORDER, COLOR_INPUT_TEXT,
     COLOR_LABEL as COLOR_FIELD_KEY, COLOR_PANEL_BG, COLOR_TITLE,
 };
-use crate::ui_layout::theme::widgets::{scrollable_list, ScrollableContainer};
+use crate::ui_layout::theme::widgets::{ScrollableContainer, scrollable_list};
 
+/// Stored on the active watch stream entity so the observer can validate freshness.
 #[derive(Component)]
-struct GetComponentCtx {
+struct WatchComponentCtx {
     entity_id: u64,
     type_path: String,
 }
@@ -29,8 +30,10 @@ struct InspectorState {
     fields: Vec<(String, String)>, // (field_name, value_string)
 }
 
-#[derive(Resource)]
-struct InspectorPollTimer(Timer);
+/// Holds the ECS entity for the active `get_components+watch` stream.
+/// Inserting `AbortStream` on it cancels and despawns it.
+#[derive(Resource, Default)]
+struct InspectorStreamEntity(Option<Entity>);
 
 // ── UI Components ──────────────────────────────────────────────────────────
 
@@ -43,10 +46,6 @@ struct InspectorPanel;
 struct EditableInspectorField {
     field_key: String,
 }
-
-/// Inserted after submit so the field refreshes from state even while still focused.
-#[derive(Component)]
-struct RefreshOnce;
 
 pub fn inspector_panel() -> impl Scene {
     bsn! {
@@ -79,17 +78,12 @@ pub fn inspector_panel() -> impl Scene {
 
 pub fn plugin(app: &mut App) {
     app.init_resource::<InspectorState>()
-        .insert_resource(InspectorPollTimer(Timer::from_seconds(
-            1.0,
-            TimerMode::Repeating,
-        )))
+        .init_resource::<InspectorStreamEntity>()
         .add_systems(
             Update,
             (
                 fetch_on_component_selection,
-                poll_inspector_fields,
                 render_inspector.run_if(resource_changed::<InspectorState>),
-                update_inspector_field_values.run_if(resource_changed::<InspectorState>),
                 submit_inspector_field,
             ),
         );
@@ -103,116 +97,140 @@ fn fetch_on_component_selection(
     server_url: Res<ServerUrl>,
     mut commands: Commands,
     mut state: ResMut<InspectorState>,
+    mut stream_entity: ResMut<InspectorStreamEntity>,
     mut last: Local<Option<(u64, String)>>,
 ) {
-    let current = selected
-        .single()
-        .ok()
-        .and_then(|row| component_data.entity_id().map(|id| (id, row.type_path.clone())));
+    let current = selected.single().ok().and_then(|row| {
+        component_data
+            .entity_id()
+            .map(|id| (id, row.type_path.clone()))
+    });
 
     if current == *last {
         return;
     }
     *last = current.clone();
+
+    // Cancel and despawn the old watch stream.
+    if let Some(e) = stream_entity.0.take() {
+        debug!("inspector: aborting old stream {:?}", e);
+        commands.entity(e).insert(AbortStream);
+    }
+
     state.fields.clear();
 
     let Some((entity_id, type_path)) = current else {
+        debug!("inspector: selection cleared");
         state.entity_id = None;
         state.type_path = None;
         return;
     };
 
+    debug!("inspector: watching entity={entity_id} type_path={type_path}");
     state.entity_id = Some(entity_id);
     state.type_path = Some(type_path.clone());
 
-    let req = commands.brp_get_components(&server_url.0, entity_id, &[type_path.clone()], false);
-    commands
-        .entity(req)
-        .insert(GetComponentCtx { entity_id, type_path })
-        .observe(
-            |trigger: On<Add, RpcResponse<BrpGetComponents>>,
-             q: Query<(&RpcResponse<BrpGetComponents>, &GetComponentCtx)>,
-             mut state: ResMut<InspectorState>,
-             mut commands: Commands| {
-                let ecs_entity = trigger.entity;
-                let Ok((response, ctx)) = q.get(ecs_entity) else {
-                    commands.entity(ecs_entity).despawn();
-                    return;
-                };
-
-                if state.entity_id != Some(ctx.entity_id)
-                    || state.type_path.as_deref() != Some(&ctx.type_path)
-                {
-                    commands.entity(ecs_entity).despawn();
-                    return;
-                }
-
-                if let Ok(data) = &response.data {
-                    let raw = &data.result["components"][&ctx.type_path];
-                    let val = unwrap_newtype(raw);
-                    state.fields = parse_fields(val);
-                }
-
-                commands.entity(ecs_entity).despawn();
-            },
-        )
-        .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
-            commands.entity(trigger.entity).despawn();
-        });
-}
-
-fn poll_inspector_fields(
-    time: Res<Time>,
-    mut timer: ResMut<InspectorPollTimer>,
-    state: Res<InspectorState>,
-    server_url: Res<ServerUrl>,
-    mut commands: Commands,
-) {
-    if !timer.0.tick(time.delta()).just_finished() {
-        return;
+    // One-shot fetch for the initial snapshot (populates fields before the first watch event).
+    let get_req =
+        commands.brp_get_components(&server_url.0, entity_id, &[type_path.clone()], false);
+    {
+        let type_path = type_path.clone();
+        commands
+            .entity(get_req)
+            .observe(
+                move |trigger: On<Add, RpcResponse<BrpGetComponents>>,
+                      query: Query<&RpcResponse<BrpGetComponents>>,
+                      mut state: ResMut<InspectorState>,
+                      mut commands: Commands| {
+                    let entity = trigger.entity;
+                    if let Ok(resp) = query.get(entity) {
+                        if state.entity_id != Some(entity_id)
+                            || state.type_path.as_deref() != Some(&type_path)
+                        {
+                            debug!("inspector get: stale, dropping");
+                        } else {
+                            match resp.data.as_ref() {
+                                Ok(gc) => {
+                                    let raw = &gc.result["components"][&type_path];
+                                    let val = unwrap_newtype(raw);
+                                    let new_fields = parse_fields(val);
+                                    if new_fields != state.fields {
+                                        state.fields = new_fields;
+                                    }
+                                }
+                                Err(e) => warn!("inspector get_components error: {e}"),
+                            }
+                        }
+                    }
+                    commands.entity(entity).despawn();
+                },
+            )
+            .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+                warn!("inspector get_components timed out");
+                commands.entity(trigger.entity).despawn();
+            });
     }
 
-    let (Some(entity_id), Some(type_path)) = (state.entity_id, state.type_path.clone()) else {
-        return;
-    };
-
-    let req = commands.brp_get_components(&server_url.0, entity_id, &[type_path.clone()], false);
+    // Watch stream — fires on every subsequent change.
+    let stream =
+        commands.brp_watch_components(&server_url.0, entity_id, &[type_path.as_str()], false);
+    debug!("inspector: spawned stream entity {:?}", stream);
     commands
-        .entity(req)
-        .insert(GetComponentCtx { entity_id, type_path })
+        .entity(stream)
+        .insert(WatchComponentCtx {
+            entity_id,
+            type_path,
+        })
         .observe(
-            |trigger: On<Add, RpcResponse<BrpGetComponents>>,
-             q: Query<(&RpcResponse<BrpGetComponents>, &GetComponentCtx)>,
-             mut state: ResMut<InspectorState>,
-             mut commands: Commands| {
-                let ecs_entity = trigger.entity;
-                let Ok((response, ctx)) = q.get(ecs_entity) else {
-                    commands.entity(ecs_entity).despawn();
+            |trigger: On<Insert, StreamData<BrpGetComponentsWatch>>,
+             query: Query<(&StreamData<BrpGetComponentsWatch>, &WatchComponentCtx)>,
+             mut state: ResMut<InspectorState>| {
+                let entity = trigger.entity;
+                let Ok((data, ctx)) = query.get(entity) else {
+                    debug!("inspector stream: query miss on {:?}", entity);
                     return;
                 };
+
+                debug!(
+                    "inspector stream: {} event(s) for entity={} type_path={}",
+                    data.0.len(),
+                    ctx.entity_id,
+                    ctx.type_path
+                );
 
                 if state.entity_id != Some(ctx.entity_id)
                     || state.type_path.as_deref() != Some(&ctx.type_path)
                 {
-                    commands.entity(ecs_entity).despawn();
+                    debug!(
+                        "inspector stream: stale (state={:?}/{:?}), dropping",
+                        state.entity_id, state.type_path
+                    );
                     return;
                 }
 
-                if let Ok(data) = &response.data {
-                    let raw = &data.result["components"][&ctx.type_path];
+                for item in &data.0 {
+                    let raw = &item.result["components"][&ctx.type_path];
+                    debug!("inspector stream: raw result = {}", raw);
                     let val = unwrap_newtype(raw);
                     let new_fields = parse_fields(val);
+                    debug!(
+                        "inspector stream: parsed {} field(s): {:?}",
+                        new_fields.len(),
+                        new_fields.iter().map(|(k, _)| k).collect::<Vec<_>>()
+                    );
                     if new_fields != state.fields {
                         state.fields = new_fields;
                     }
                 }
-
-                commands.entity(ecs_entity).despawn();
             },
         )
-        .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
-            commands.entity(trigger.entity).despawn();
+        .observe(|trigger: On<Add, StreamDisconnected>| {
+            warn!(
+                "Inspector stream {:?} disconnected — server closed or network error",
+                trigger.entity
+            );
         });
+    stream_entity.0 = Some(stream);
 }
 
 fn render_inspector(
@@ -220,8 +238,7 @@ fn render_inspector(
     state: Res<InspectorState>,
     content: Query<(Entity, Option<&Children>, &ScrollableContainer)>,
 ) {
-    let Some((content_entity, children, _)) =
-        content.iter().find(|(_, _, c)| c.0 == "inspector")
+    let Some((content_entity, children, _)) = content.iter().find(|(_, _, c)| c.0 == "inspector")
     else {
         return;
     };
@@ -311,34 +328,6 @@ fn render_inspector(
     }
 }
 
-fn update_inspector_field_values(
-    mut commands: Commands,
-    state: Res<InspectorState>,
-    input_focus: Res<InputFocus>,
-    inputs: Query<(Entity, &EditableInspectorField)>,
-    mut editable_texts: Query<&mut EditableText>,
-    refresh_once: Query<Entity, With<RefreshOnce>>,
-) {
-    for (entity, marker) in &inputs {
-        let Some(value) = state.fields.iter().find(|(k, _)| k == &marker.field_key).map(|(_, v)| v) else {
-            continue;
-        };
-
-        let has_refresh = refresh_once.contains(entity);
-        if input_focus.get() == Some(entity) && !has_refresh {
-            continue;
-        }
-
-        if let Ok(mut editable) = editable_texts.get_mut(entity) {
-            editable.editor.set_text(value);
-        }
-
-        if has_refresh {
-            commands.entity(entity).remove::<RefreshOnce>();
-        }
-    }
-}
-
 fn submit_inspector_field(
     mut commands: Commands,
     input_focus: Res<InputFocus>,
@@ -374,10 +363,16 @@ fn submit_inspector_field(
         format!(".{}", marker.field_key)
     };
 
-    mutate_component_field(entity_id, type_path.clone(), field_path, json_value, &server_url.0, &mut commands);
+    mutate_component_field(
+        entity_id,
+        type_path.clone(),
+        field_path,
+        json_value,
+        &server_url.0,
+        &mut commands,
+    );
 
     text_input.clear(&mut font_cx.0, &mut layout_cx.0);
-    commands.entity(focused_entity).insert(RefreshOnce);
 }
 
 // ── BRP helpers ────────────────────────────────────────────────────────────
@@ -407,12 +402,10 @@ fn mutate_component_field(
                 commands.entity(entity).despawn();
             },
         )
-        .observe(
-            |trigger: On<Add, TimeoutError>, mut commands: Commands| {
-                error!("mutate_component_field request timed out");
-                commands.entity(trigger.entity).despawn();
-            },
-        );
+        .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+            error!("mutate_component_field request timed out");
+            commands.entity(trigger.entity).despawn();
+        });
 }
 
 // ── Value helpers ──────────────────────────────────────────────────────────
@@ -466,9 +459,21 @@ fn decompose_affine(arr: &[serde_json::Value]) -> Option<Vec<(String, String)>> 
     let sz = (m02 * m02 + m12 * m12 + m22 * m22).sqrt();
 
     let eps = 1e-10_f64;
-    let (r00, r10, r20) = if sx > eps { (m00/sx, m10/sx, m20/sx) } else { (1.0, 0.0, 0.0) };
-    let (r01, r11, r21) = if sy > eps { (m01/sy, m11/sy, m21/sy) } else { (0.0, 1.0, 0.0) };
-    let (r02, r12, r22) = if sz > eps { (m02/sz, m12/sz, m22/sz) } else { (0.0, 0.0, 1.0) };
+    let (r00, r10, r20) = if sx > eps {
+        (m00 / sx, m10 / sx, m20 / sx)
+    } else {
+        (1.0, 0.0, 0.0)
+    };
+    let (r01, r11, r21) = if sy > eps {
+        (m01 / sy, m11 / sy, m21 / sy)
+    } else {
+        (0.0, 1.0, 0.0)
+    };
+    let (r02, r12, r22) = if sz > eps {
+        (m02 / sz, m12 / sz, m22 / sz)
+    } else {
+        (0.0, 0.0, 1.0)
+    };
 
     // Rotation matrix → quaternion (Shepperd's method)
     let trace = r00 + r11 + r22;
@@ -487,9 +492,18 @@ fn decompose_affine(arr: &[serde_json::Value]) -> Option<Vec<(String, String)>> 
     };
 
     Some(vec![
-        ("translation".to_string(), format!("[{:.1},{:.1},{:.1}]", tx, ty, tz)),
-        ("rotation".to_string(), format!("[{:.1},{:.1},{:.1},{:.1}]", qx, qy, qz, qw)),
-        ("scale".to_string(),    format!("[{:.1},{:.1},{:.1}]", sx, sy, sz)),
+        (
+            "translation".to_string(),
+            format!("[{:.1},{:.1},{:.1}]", tx, ty, tz),
+        ),
+        (
+            "rotation".to_string(),
+            format!("[{:.1},{:.1},{:.1},{:.1}]", qx, qy, qz, qw),
+        ),
+        (
+            "scale".to_string(),
+            format!("[{:.1},{:.1},{:.1}]", sx, sy, sz),
+        ),
     ])
 }
 

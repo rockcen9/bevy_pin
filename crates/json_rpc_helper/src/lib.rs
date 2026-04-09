@@ -3,6 +3,7 @@ use crossbeam_channel::{Receiver, Sender, unbounded};
 use serde::de::DeserializeOwned;
 use std::marker::PhantomData;
 use std::time::Duration;
+use tracing::{debug, warn};
 
 // --- System sets ---
 
@@ -88,16 +89,64 @@ struct RpcQueue<T: Send + Sync + 'static> {
 
 impl<T: Send + Sync + 'static> Default for RpcQueue<T> {
     fn default() -> Self {
-        // Unbounded: one message per request; receiver_system drains every frame.
         let (tx, rx) = unbounded();
         Self { tx, rx }
     }
 }
 
+// --- HTTP ---
+
+async fn post_json<T: DeserializeOwned>(url: String, payload: Vec<u8>) -> Result<T, String> {
+    reqwest::Client::new()
+        .post(&url)
+        .header("Content-Type", "application/json")
+        .body(payload)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .json::<T>()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+fn spawn_http_task<T: DeserializeOwned + Send + Sync + 'static>(
+    entity: Entity,
+    url: String,
+    payload: Vec<u8>,
+    tx: Sender<(Entity, Result<T, String>)>,
+) {
+    #[cfg(not(target_arch = "wasm32"))]
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("tokio rt");
+        rt.block_on(async move {
+            debug!("rpc [{entity:?}]: POST {url}");
+            let data = post_json::<T>(url, payload).await;
+            match &data {
+                Ok(_) => debug!("rpc [{entity:?}]: response ok"),
+                Err(e) => debug!("rpc [{entity:?}]: response err: {e}"),
+            }
+            let _ = tx.send((entity, data));
+        });
+    });
+
+    #[cfg(target_arch = "wasm32")]
+    wasm_bindgen_futures::spawn_local(async move {
+        debug!("rpc [{entity:?}]: POST {url}");
+        let data = post_json::<T>(url, payload).await;
+        match &data {
+            Ok(_) => debug!("rpc [{entity:?}]: response ok"),
+            Err(e) => debug!("rpc [{entity:?}]: response err: {e}"),
+        }
+        let _ = tx.send((entity, data));
+    });
+}
+
 // --- Systems / Observers ---
 
 /// Fires the HTTP request the moment [`RpcRequest<T>`] is added to an entity.
-/// Runs exactly once per entity — no sentinel component needed.
 fn on_request_added<T: DeserializeOwned + Send + Sync + 'static>(
     trigger: On<Add, RpcRequest<T>>,
     query: Query<&RpcRequest<T>>,
@@ -108,16 +157,13 @@ fn on_request_added<T: DeserializeOwned + Send + Sync + 'static>(
         return;
     };
 
-    let tx = queue.tx.clone();
-    let http_req = ehttp::Request::post(&request.url, request.payload.clone());
-
-    ehttp::fetch(http_req, move |result| {
-        let data = match result {
-            Ok(resp) => serde_json::from_slice::<T>(&resp.bytes).map_err(|e| e.to_string()),
-            Err(e) => Err(e),
-        };
-        let _ = tx.send((entity, data));
-    });
+    debug!("rpc [{entity:?}]: request spawned → {}", request.url);
+    spawn_http_task::<T>(
+        entity,
+        request.url.clone(),
+        request.payload.clone(),
+        queue.tx.clone(),
+    );
 }
 
 /// Delivers completed responses back onto their originating entity.
@@ -128,7 +174,10 @@ fn receiver_system<T: DeserializeOwned + Send + Sync + 'static>(
 ) {
     while let Ok((entity, data)) = queue.rx.try_recv() {
         if entities.contains(entity) {
+            debug!("rpc [{entity:?}]: delivering response to entity");
             commands.entity(entity).insert(RpcResponse::<T> { data });
+        } else {
+            debug!("rpc [{entity:?}]: response arrived but entity no longer exists, dropping");
         }
     }
 }
@@ -154,7 +203,7 @@ fn garbage_collection_system(
 ) {
     for (entity, timeout) in &query {
         if timeout.0.just_finished() {
-            tracing::warn!("RPC request timeout for {:?}.", entity);
+            warn!("rpc [{entity:?}]: request timed out");
             commands.entity(entity).insert(TimeoutError);
         }
     }
@@ -190,10 +239,6 @@ impl<T: DeserializeOwned + Send + Sync + 'static> Plugin for RpcEndpointPlugin<T
 }
 
 /// Top-level plugin. Add once. Then add [`RpcEndpointPlugin<T>`] per response type.
-///
-/// Owns the timeout systems shared across all `T`:
-/// - `tick_timeout_system` — advances [`RequestTimeout`] timers each frame
-/// - `garbage_collection_system` — inserts [`TimeoutError`] when a timer fires
 pub struct RemoteHelperPlugin;
 
 impl Plugin for RemoteHelperPlugin {

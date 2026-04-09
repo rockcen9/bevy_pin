@@ -15,7 +15,8 @@ fn main() {
 
 fn game_manager(app: &mut App) {
     let cors_headers = Headers::new()
-        .insert("Access-Control-Allow-Origin", "https://rockcen9.github.io")
+        //todo revert back
+        .insert("Access-Control-Allow-Origin", "http://127.0.0.1:4000")
         .insert("Access-Control-Allow-Headers", "Content-Type");
 
     // add remote plugin
@@ -49,11 +50,16 @@ pub fn entity_plugin(app: &mut App) {
     app.add_systems(Startup, |mut commands: Commands| {
         commands.spawn((Bird::default(),));
     });
-    app.add_systems(Startup, |mut commands: Commands| {
-        commands.spawn((Bird::default(),));
-    });
+
     app.add_systems(Startup, |mut commands: Commands| {
         commands.spawn((Rat::default(),));
+    });
+
+    app.add_systems(Startup, |mut commands: Commands| {
+        commands.spawn((Rabbit::default(),));
+    });
+    app.add_systems(Startup, |mut commands: Commands| {
+        commands.spawn((Rabbit::default(),));
     });
 }
 

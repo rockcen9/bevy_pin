@@ -1,7 +1,7 @@
 use crate::{
     manager::{
-        entity_query::{
-            component_data,
+        entity_filter::{
+            component_list,
             entity_list::ui,
             inspector,
             query::{history::query_history_panel, insert::insert_panel, query_panel_root},
@@ -94,7 +94,7 @@ fn spawn_component_panel(
                 ]),
                 (right_info_root()
                 Children [
-                    component_data::component_data_panel(),
+                    component_list::component_data_panel(),
                     inspector::inspector_panel(),
                 ]),
             ]
@@ -142,7 +142,7 @@ fn spawn_new_scene_panel(
                         spawned_panel(),
                     ]
                 ),
-                component_data::component_data_panel(),
+                component_list::component_data_panel(),
                 inspector::inspector_panel(),
             ]
         };

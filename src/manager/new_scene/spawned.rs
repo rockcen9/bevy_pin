@@ -1,5 +1,5 @@
 use crate::manager::connection::ServerUrl;
-use crate::manager::entity_query::component_data::InspectedEntity;
+use crate::manager::entity_filter::component_list::InspectedEntity;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
     COLOR_BUTTON_BG, COLOR_BUTTON_HOVER, COLOR_DESTRUCTIVE_HOVER, COLOR_INPUT_TEXT,

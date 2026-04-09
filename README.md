@@ -38,7 +38,7 @@ cargo run
 
 ## Features
 
-- **Entity Query**: Track specific entities and their component changes using `With<T>`/`Without<T>` or shorthand `T`/`!T`.
+- **Entity Filter**: Track specific entities and their component changes using `With<T>`/`Without<T>` or shorthand `T`/`!T`.
 - **State Monitor**: Easily switch between app states or trigger a `NextState`.
 - **Resource Monitor**: Watch and edit resource values in real-time.
 

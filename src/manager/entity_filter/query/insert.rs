@@ -54,7 +54,7 @@ pub fn insert_panel() -> impl Scene {
                 }
                 BackgroundColor(COLOR_HEADER_BG)
                 Children [(
-                    Text::new("Entity Query")
+                    Text::new("Entity Filter")
                     template(|_| Ok(TextFont::from_font_size(18.0)))
                     TextColor(COLOR_TITLE)
                 )]
