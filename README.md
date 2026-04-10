@@ -12,7 +12,7 @@ Bevy Pin is a remote debugging and data inspection tool for Bevy, running in the
 
 [**🎮 Try it live here!**](https://rockcen9.github.io/bevy_pin/)
 
-![Demo](./docs/demos/demov2.png)
+![Demo](./docs/demos/demov3.png)
 
 *The default connection is `127.0.0.1:15702`. To connect to a custom address, append `?host=192.168.1.100:15702` to the URL.*
 *Example Bevy setup is available in [`./examples/demo_game.rs`](./examples/demo_game.rs).*
