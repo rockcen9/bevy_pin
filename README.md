@@ -30,7 +30,7 @@ cargo run
 
 ## [Changelog](./CHANGELOG.md)
 
-### [0.1.11] - 2026-04-11
+### [0.1.11] - 2026-04-10
 
 - feat: entity lookup
 
