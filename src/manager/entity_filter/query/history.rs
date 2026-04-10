@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
     COLOR_BUTTON_BG, COLOR_BUTTON_HOVER, COLOR_DESTRUCTIVE_HOVER, COLOR_INPUT_TEXT,
-    COLOR_MENU_NORMAL, COLOR_SEPARATOR,
+    COLOR_LABEL_TERTIARY, COLOR_MENU_NORMAL,
 };
 use crate::ui_layout::theme::widgets::{close_button, titled_panel, ScrollableContainer};
 
@@ -81,7 +81,7 @@ fn empty_history_hint() -> impl Scene {
     bsn! {
         Text::new("No history yet")
         template(|_| Ok(TextFont::from_font_size(12.0)))
-        TextColor(COLOR_SEPARATOR)
+        TextColor(COLOR_LABEL_TERTIARY)
     }
 }
 

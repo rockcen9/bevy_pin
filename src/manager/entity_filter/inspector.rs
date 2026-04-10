@@ -10,7 +10,7 @@ use crate::manager::entity_filter::component_list::{
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
     COLOR_HEADER_BG, COLOR_INPUT_BG, COLOR_INPUT_BORDER, COLOR_INPUT_TEXT,
-    COLOR_LABEL as COLOR_FIELD_KEY, COLOR_PANEL_BG, COLOR_TITLE,
+    COLOR_LABEL as COLOR_FIELD_KEY, COLOR_LABEL_TERTIARY, COLOR_PANEL_BG, COLOR_TITLE,
 };
 use crate::ui_layout::theme::widgets::{ScrollableContainer, scrollable_list};
 
@@ -84,7 +84,7 @@ pub fn plugin(app: &mut App) {
             Update,
             (
                 fetch_on_component_selection,
-                render_inspector.run_if(resource_changed::<InspectorState>),
+                render_inspector,
                 submit_inspector_field,
             ),
         );
@@ -238,7 +238,12 @@ fn render_inspector(
     mut commands: Commands,
     state: Res<InspectorState>,
     content: Query<(Entity, Option<&Children>, &ScrollableContainer)>,
+    added_containers: Query<&ScrollableContainer, Added<ScrollableContainer>>,
 ) {
+    let is_newly_added = added_containers.iter().any(|c| c.0 == "inspector");
+    if !state.is_changed() && !is_newly_added {
+        return;
+    }
     let Some((content_entity, children, _)) = content.iter().find(|(_, _, c)| c.0 == "inspector")
     else {
         return;
@@ -255,7 +260,7 @@ fn render_inspector(
             .spawn((
                 Text::new("Select a component"),
                 TextFont::from_font_size(13.0),
-                TextColor(COLOR_INPUT_TEXT),
+                TextColor(COLOR_LABEL_TERTIARY),
             ))
             .id();
         commands.entity(content_entity).add_child(placeholder);
@@ -267,7 +272,7 @@ fn render_inspector(
             .spawn((
                 Text::new("Loading..."),
                 TextFont::from_font_size(13.0),
-                TextColor(COLOR_INPUT_TEXT),
+                TextColor(COLOR_LABEL_TERTIARY),
             ))
             .id();
         commands.entity(content_entity).add_child(loading);

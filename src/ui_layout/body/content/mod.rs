@@ -94,7 +94,7 @@ fn spawn_component_panel(
                 ]),
                 (right_info_root()
                 Children [
-                    component_list::component_list_panel(),
+                    component_list::component_list_root(),
                     inspector::inspector_panel(),
                 ]),
             ]
@@ -143,7 +143,7 @@ fn spawn_new_scene_panel(
                         spawned_panel(),
                     ]
                 ),
-                component_list::component_list_panel(),
+                component_list::component_list_root(),
                 inspector::inspector_panel(),
             ]
         };
