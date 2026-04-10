@@ -1,3 +1,12 @@
+## [0.1.8] - 2026-04-10
+
+### 🚀 Features
+
+- Stream for component list and inspector(reqwest)
+
+### ⚙️ Miscellaneous Tasks
+
+- Release
 ## [0.1.6] - 2026-04-09
 
 ### ⚙️ Miscellaneous Tasks
