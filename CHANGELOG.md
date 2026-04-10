@@ -7,6 +7,7 @@
 ### ⚙️ Miscellaneous Tasks
 
 - Release
+- Release
 ## [0.1.6] - 2026-04-09
 
 ### ⚙️ Miscellaneous Tasks
