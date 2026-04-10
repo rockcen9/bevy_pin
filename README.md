@@ -8,7 +8,7 @@ Bevy Pin is a remote debugging and data inspection tool for Bevy, running in the
 
 - 📌 **Pin Data:** Keep essential information pinned in view for streamlined debugging.
 - 📦 **Zero External Dependencies:** Built natively, no third-party crates needed in your game project!
-- 🔌 **Powered by BRP:** Built natively on Bevy’s remote protocol for seamless, official integration.
+- 🔌 **Powered by BRP:** Built on top of Bevy’s remote protocol.
 
 [**🎮 Try it live here!**](https://rockcen9.github.io/bevy_pin/)
 
