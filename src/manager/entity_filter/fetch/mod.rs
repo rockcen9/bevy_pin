@@ -32,7 +32,7 @@ fn clear_on_exit(
 pub fn plugin(app: &mut App) {
     app.init_resource::<DiscoveredComponents>()
         .init_resource::<TriggeredDiscoveries>()
-        .add_systems(OnExit(SidebarState::Component), clear_on_exit);
+        .add_systems(OnExit(SidebarState::EntityFilter), clear_on_exit);
     discovery::plugin(app);
     poll::plugin(app);
 }

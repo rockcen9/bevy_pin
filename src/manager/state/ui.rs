@@ -7,12 +7,10 @@ use crate::manager::connection::ServerUrl;
 use crate::ui_layout::theme::palette::{
     COLOR_ACTIVE, COLOR_BUTTON_TEXT, COLOR_DISABLED, COLOR_HOVER, COLOR_INACTIVE,
 };
-use crate::ui_layout::theme::widgets::{titled_panel, ScrollableContainer};
+use crate::ui_layout::theme::widgets::{ScrollableContainer, titled_panel};
 
 #[derive(Component, Clone, Default)]
-#[require(DespawnOnExit::<SidebarState>(SidebarState::State), Name::new("StatePanelRoot"))]
 pub struct StatePanelsRoot;
-
 
 #[derive(Component, Clone, Default)]
 struct StateButton {
@@ -58,6 +56,7 @@ pub fn state_panels_root() -> impl Scene {
     bsn! {
         #StatePanelRoot
         StatePanelsRoot
+        DespawnOnExit::<SidebarState>(SidebarState::State)
         Node {
             position_type: PositionType::Absolute,
             top: Val::Px(20.0),
@@ -68,7 +67,6 @@ pub fn state_panels_root() -> impl Scene {
         }
     }
 }
-
 
 fn state_button(variant: Arc<str>, state_type_path: Arc<str>) -> impl Scene {
     let label = variant.to_string();
@@ -247,11 +245,8 @@ fn handle_state_button_press(
         };
 
         let variant = button.variant.to_string();
-        let req = commands.brp_insert_resources(
-            &server_url.0,
-            &path,
-            json!({ "Pending": variant }),
-        );
+        let req =
+            commands.brp_insert_resources(&server_url.0, &path, json!({ "Pending": variant }));
         commands
             .entity(req)
             .observe(
@@ -268,11 +263,9 @@ fn handle_state_button_press(
                     commands.entity(entity).despawn();
                 },
             )
-            .observe(
-                |trigger: On<Add, TimeoutError>, mut commands: Commands| {
-                    error!("State switch request timed out");
-                    commands.entity(trigger.entity).despawn();
-                },
-            );
+            .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+                error!("State switch request timed out");
+                commands.entity(trigger.entity).despawn();
+            });
     }
 }

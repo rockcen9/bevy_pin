@@ -12,7 +12,7 @@ use crate::ui_layout::theme::palette::{
     COLOR_INPUT_BORDER, COLOR_INPUT_TEXT, COLOR_LABEL_DISABLED, COLOR_LABEL_SECONDARY,
     COLOR_PANEL_BG, COLOR_PANEL_BG_DISABLED, COLOR_TITLE,
 };
-use crate::ui_layout::theme::widgets::{scrollable_list, ScrollableContainer};
+use crate::ui_layout::theme::widgets::{ScrollableContainer, scrollable_list};
 use std::sync::Arc;
 
 // Marker on the outer panel node for disabled-state color updates
@@ -22,7 +22,6 @@ struct ResourcePanelMarker(Arc<str>);
 // Marker on the header child node for disabled-state color updates
 #[derive(Component, Clone, Default)]
 struct ResourcePanelHeader(Arc<str>);
-
 
 // Use Arc<str> for identification fields
 #[derive(Component, Clone, Default)]
@@ -85,7 +84,9 @@ pub fn resource_panels_root() -> impl Scene {
             column_gap: Val::Px(10.0),
             flex_wrap: FlexWrap::Wrap
         }
+        #ResourcePanelRoot
         ResourceScreenRoot
+        DespawnOnExit::<SidebarState>(SidebarState::Resource)
     }
 }
 

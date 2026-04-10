@@ -7,7 +7,7 @@ use crate::{
             query::{history::query_history_panel, insert::insert_panel, query_panel_root},
             ui::{left_query_root, right_info_root},
         },
-        new_scene::{NewScenePanelRoot, spawned::spawned_panel, insert::spawn_entity_panel},
+        new_scene::{NewScenePanelRoot, insert::spawn_entity_panel, spawned::spawned_panel},
         resource::ui::resource_panels_root,
         state::ui::state_panels_root,
     },
@@ -29,7 +29,7 @@ pub fn plugin(app: &mut App) {
     );
     app.add_systems(
         Update,
-        spawn_component_panel.run_if(in_state(SidebarState::Component)),
+        spawn_component_panel.run_if(in_state(SidebarState::EntityFilter)),
     );
     app.add_systems(
         Update,
@@ -61,7 +61,6 @@ fn spawn_state_panel(
 }
 
 #[derive(Component, Default, Clone, Reflect)]
-#[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
 pub struct ComponentPanelRoot;
 
 fn spawn_component_panel(
@@ -74,6 +73,7 @@ fn spawn_component_panel(
         let scene = bsn! {
             #ComponentPanelRoot
             ComponentPanelRoot
+            DespawnOnExit::<SidebarState>(SidebarState::EntityFilter)
             Node {
                 flex_grow: 1.0,
                 height: Val::Percent(100.0),
@@ -94,7 +94,7 @@ fn spawn_component_panel(
                 ]),
                 (right_info_root()
                 Children [
-                    component_list::component_data_panel(),
+                    component_list::component_list_panel(),
                     inspector::inspector_panel(),
                 ]),
             ]
@@ -125,6 +125,7 @@ fn spawn_new_scene_panel(
         let scene = bsn! {
             #NewScenePanelRoot
             NewScenePanelRoot
+            DespawnOnExit::<SidebarState>(SidebarState::NewScene)
             Node {
                 flex_direction: FlexDirection::Row,
                 align_items: AlignItems::FlexStart,
@@ -142,7 +143,7 @@ fn spawn_new_scene_panel(
                         spawned_panel(),
                     ]
                 ),
-                component_list::component_data_panel(),
+                component_list::component_list_panel(),
                 inspector::inspector_panel(),
             ]
         };

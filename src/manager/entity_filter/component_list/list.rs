@@ -81,13 +81,14 @@ pub struct RemoveComponentButton {
 // ── UI Components ──────────────────────────────────────────────────────────
 
 #[derive(Component, Clone, Default)]
-#[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
-struct ComponentDataPanel;
+struct ComponentListPanel;
 
-pub fn component_data_panel() -> impl Scene {
+pub fn component_list_panel() -> impl Scene {
     bsn! {
         #ComponentDataPanel
-        ComponentDataPanel
+        ComponentListPanel
+        DespawnOnExit::<SidebarState>(SidebarState::EntityFilter)
+        DespawnOnExit::<SidebarState>(SidebarState::NewScene)
         Node {
             flex_direction: FlexDirection::Column,
             min_width: Val::Px(280.0),
@@ -123,7 +124,7 @@ pub fn plugin(app: &mut App) {
             Update,
             (
                 fetch_on_selection,
-                render_component_names.run_if(resource_changed::<ComponentDataState>),
+                render_component_names,
                 update_panel_title,
                 handle_component_row_selection,
                 update_component_row_hover,
@@ -471,7 +472,12 @@ fn render_component_names(
     mut commands: Commands,
     state: Res<ComponentDataState>,
     content: Query<(Entity, Option<&Children>, &ScrollableContainer)>,
+    added_containers: Query<&ScrollableContainer, Added<ScrollableContainer>>,
 ) {
+    let is_newly_added = added_containers.iter().any(|c| c.0 == "component-data");
+    if !state.is_changed() && !is_newly_added {
+        return;
+    }
     let Some((content_entity, children, _)) =
         content.iter().find(|(_, _, c)| c.0 == "component-data")
     else {

@@ -13,7 +13,6 @@ pub struct ResourceEntry {
 pub struct DiscoveredResources(pub Vec<ResourceEntry>);
 
 #[derive(Component, Default, Clone)]
-#[require(DespawnOnExit::<SidebarState>(SidebarState::Resource), Name::new("ResourcePanelRoot"))]
 pub struct ResourceScreenRoot;
 
 pub fn plugin(app: &mut App) {

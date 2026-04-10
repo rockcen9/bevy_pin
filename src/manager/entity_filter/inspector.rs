@@ -38,7 +38,6 @@ struct InspectorStreamEntity(Option<Entity>);
 // ── UI Components ──────────────────────────────────────────────────────────
 
 #[derive(Component, Clone, Default)]
-#[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
 struct InspectorPanel;
 
 /// Marker on the editable input so we know which entity/component/field to mutate on Enter.
@@ -51,6 +50,8 @@ pub fn inspector_panel() -> impl Scene {
     bsn! {
         #InspectorPanel
         InspectorPanel
+        DespawnOnExit::<SidebarState>(SidebarState::EntityFilter)
+        DespawnOnExit::<SidebarState>(SidebarState::NewScene)
         Node {
             flex_direction: FlexDirection::Column,
             min_width: Val::Px(280.0),
