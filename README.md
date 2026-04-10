@@ -30,13 +30,13 @@ cargo run
 
 ## [Changelog](./CHANGELOG.md)
 
+### [0.1.11] - 2026-04-11
+
+- feat: entity lookup
+
 ### [0.1.10] - 2026-04-10
 
 - feat: insert component to entity
-
-### [0.1.8] - 2026-04-10
-
-- feat: stream for component list and inspector
 
 ## Features
 
