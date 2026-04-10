@@ -30,6 +30,6 @@ pub enum SidebarState {
     #[default]
     State,
     Resource,
-    Component,
+    EntityFilter,
     NewScene,
 }

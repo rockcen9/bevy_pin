@@ -6,19 +6,19 @@ use crate::ui_layout::theme::palette::{
     COLOR_BUTTON_BG, COLOR_BUTTON_HOVER, COLOR_HEADER_BG, COLOR_INPUT_TEXT, COLOR_PANEL_BG,
     COLOR_ROW_SELECTED, COLOR_TITLE,
 };
-use crate::ui_layout::theme::widgets::{close_button, scrollable_list, ScrollableContainer};
+use crate::ui_layout::theme::widgets::{ScrollableContainer, close_button, scrollable_list};
 use bevy::ecs::schedule::common_conditions::resource_changed;
 
 const SCROLL_MAX_HEIGHT: f32 = 300.0;
 
 #[derive(Component, Clone, Default)]
-#[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
 struct EntityListPanel;
 
 pub fn entity_list_panel() -> impl Scene {
     bsn! {
         #EntityListPanel
         EntityListPanel
+        DespawnOnExit::<SidebarState>(SidebarState::EntityFilter)
         Node {
             flex_direction: FlexDirection::Column,
             row_gap: Val::Px(10.0),
@@ -28,7 +28,6 @@ pub fn entity_list_panel() -> impl Scene {
 }
 
 #[derive(Component, Clone, Default)]
-#[require(DespawnOnExit::<SidebarState>(SidebarState::Component))]
 struct ComponentContainerRoot;
 
 #[derive(Component, Clone, Default)]
@@ -69,6 +68,7 @@ fn component_panel(title: String) -> impl Scene {
     bsn! {
         #ComponentContainerRoot
         ComponentContainerRoot
+        DespawnOnExit::<SidebarState>(SidebarState::EntityFilter)
         Node {
             flex_direction: FlexDirection::Column,
             min_width: Val::Px(280.0),
@@ -99,7 +99,6 @@ fn component_panel(title: String) -> impl Scene {
         ]
     }
 }
-
 
 fn entity_row(entity_id: u64, query: String, value_str: String) -> impl Scene {
     let index_label = crate::utils::entity_display_label(entity_id);
@@ -214,13 +213,18 @@ fn spawn_entity_rows(
         .collect();
     for (_, row, child_of) in &rows {
         if !valid.contains(&(row.entity, row.query.as_str())) {
-            debug!("spawn_entity_rows: removing stale row entity={} query='{}'", row.entity, row.query);
+            debug!(
+                "spawn_entity_rows: removing stale row entity={} query='{}'",
+                row.entity, row.query
+            );
             commands.entity(child_of.parent()).despawn();
         }
     }
 
-    let existing: HashSet<(u64, &str)> =
-        rows.iter().map(|(_, r, _)| (r.entity, r.query.as_str())).collect();
+    let existing: HashSet<(u64, &str)> = rows
+        .iter()
+        .map(|(_, r, _)| (r.entity, r.query.as_str()))
+        .collect();
 
     for entry in &components.0 {
         if existing.contains(&(entry.entity, entry.query.as_str())) {
@@ -308,7 +312,6 @@ fn handle_close_button(
     }
 }
 
-
 fn handle_delete_entity_button(
     buttons: Query<(&Interaction, &DeleteEntityButton), Changed<Interaction>>,
     server_url: Res<ServerUrl>,
@@ -320,7 +323,10 @@ fn handle_delete_entity_button(
             continue;
         }
         let entity_id = btn.0;
-        debug!("handle_delete_entity_button: despawning entity #{}", entity_id);
+        debug!(
+            "handle_delete_entity_button: despawning entity #{}",
+            entity_id
+        );
         let req = commands.brp_despawn_entity(&server_url.0, entity_id);
         commands
             .entity(req)

@@ -8,5 +8,4 @@ pub fn plugin(app: &mut App) {
     insert::plugin(app);
 }
 #[derive(Component, Default, Clone, Reflect)]
-#[require(DespawnOnExit::<SidebarState>(SidebarState::NewScene))]
 pub struct NewScenePanelRoot;

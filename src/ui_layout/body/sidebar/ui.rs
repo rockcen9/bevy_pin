@@ -169,7 +169,7 @@ fn sync_menu_button_colors(
 ) {
     for (interaction, mut bg, comp, res, rpc) in &mut query {
         let is_active = if comp.is_some() {
-            *app_state.get() == SidebarState::Component
+            *app_state.get() == SidebarState::EntityFilter
         } else if res.is_some() {
             *app_state.get() == SidebarState::Resource
         } else if rpc.is_some() {
@@ -196,7 +196,7 @@ fn on_component_button(
 ) {
     for interaction in &query {
         if *interaction == Interaction::Pressed {
-            next_state.set(SidebarState::Component);
+            next_state.set(SidebarState::EntityFilter);
         }
     }
 }
