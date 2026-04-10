@@ -12,10 +12,15 @@ fn main() {
     game_manager(&mut app);
     app.run();
 }
+#[cfg(feature = "local-web")]
+const ORIGIN: &str = "http://127.0.0.1:4000";
+
+#[cfg(not(feature = "local-web"))]
+const ORIGIN: &str = "https://rockcen9.github.io";
 
 fn game_manager(app: &mut App) {
     let cors_headers = Headers::new()
-        .insert("Access-Control-Allow-Origin", "https://rockcen9.github.io")
+        .insert("Access-Control-Allow-Origin", ORIGIN)
         .insert("Access-Control-Allow-Headers", "Content-Type");
 
     // add remote plugin
