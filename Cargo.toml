@@ -51,6 +51,9 @@ web-sys = { version = "0.3", features = [
     "Location",
     "UrlSearchParams",
 ] }
+bevy-persistent = { git = "https://github.com/rockcen9/bevy-persistent", rev = "dde32eb28574a6772097023753e10e72721d1279", features = [
+    "json",
+] }
 wasm-bindgen = { version = "=0.2.108", optional = true }
 webbrowser = { version = "1" }
 anyhow = { workspace = true }

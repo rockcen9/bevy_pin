@@ -1,11 +1,19 @@
 use crate::manager::connection::ServerUrl;
 use crate::manager::entity_filter::entity_list::ui::{ComponentEntityRow, SelectedRow};
 use crate::manager::entity_filter::fetch::DiscoveredComponents;
+use crate::manager::pinboard::load_save::{
+    PinboardPendingData, PinboardPendingItem, PinboardSaveData,
+};
+use crate::manager::pinboard::pincard::{
+    PinCard, PinCardEntry, PinCardHighlight, PinCardTitle, pincard, pincard_key,
+};
+use crate::manager::pinboard::ui::PinboardContainer;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
     COLOR_HEADER_BG, COLOR_INPUT_TEXT, COLOR_LABEL_DISABLED as COLOR_NO_DATA,
     COLOR_LABEL_SECONDARY as COLOR_COMPONENT_NAME, COLOR_LABEL_TERTIARY as COLOR_EMPTY,
-    COLOR_PANEL_BG, COLOR_ROW_HOVER, COLOR_ROW_SELECTED, COLOR_TITLE,
+    COLOR_MENU_HOVER as COLOR_PIN_HOVER, COLOR_PANEL_BG, COLOR_ROW_HOVER, COLOR_ROW_SELECTED,
+    COLOR_TITLE,
 };
 use crate::ui_layout::theme::widgets::{
     ScrollableContainer, close_button::CloseButtonWidget, scrollable_list,
@@ -81,6 +89,9 @@ pub struct RemoveComponentButton {
 // ── UI Components ──────────────────────────────────────────────────────────
 
 #[derive(Component, Clone, Default)]
+struct PinButton;
+
+#[derive(Component, Clone, Default)]
 struct ComponentListPanel;
 
 pub fn component_list_panel() -> impl Scene {
@@ -102,14 +113,36 @@ pub fn component_list_panel() -> impl Scene {
                 Node {
                     padding: UiRect::axes(Val::Px(14.0), Val::Px(10.0)),
                     border_radius: BorderRadius::top(Val::Px(10.0)),
+                    flex_direction: FlexDirection::Row,
+                    justify_content: JustifyContent::SpaceBetween,
+                    align_items: AlignItems::Center,
                 }
                 BackgroundColor(COLOR_HEADER_BG)
-                Children [(
-                    ComponentDataTitle
-                    Text::new("Component List")
-                    template(|_| Ok(TextFont::from_font_size(18.0)))
-                    TextColor(COLOR_TITLE)
-                )]
+                Children [
+                    (
+                        ComponentDataTitle
+                        Text::new("Component List")
+                        template(|_| Ok(TextFont::from_font_size(18.0)))
+                        TextColor(COLOR_TITLE)
+                    ),
+                    (
+                        PinButton
+                        Button
+                        Node {
+                            width: Val::Px(24.0),
+                            height: Val::Px(24.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            border_radius: BorderRadius::all(Val::Px(4.0)),
+                        }
+                        BackgroundColor(COLOR_HEADER_BG)
+                        Children [(
+                            Text::new("O")
+                            template(|_| Ok(TextFont::from_font_size(13.0)))
+                            TextColor(COLOR_INPUT_TEXT)
+                        )]
+                    ),
+                ]
             ),
             scrollable_list("component-data", 300.0),
         ]
@@ -130,6 +163,8 @@ pub fn plugin(app: &mut App) {
                 handle_component_row_selection,
                 update_component_row_hover,
                 handle_remove_component_button,
+                on_pin_button,
+                update_pin_button_hover,
             ),
         );
 }
@@ -693,6 +728,90 @@ fn handle_remove_component_button(
                     error!("handle_remove_component_button: remove request timed out");
                     commands.entity(trigger.entity).despawn();
                 });
+        }
+    }
+}
+
+fn update_pin_button_hover(
+    mut buttons: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<PinButton>),
+    >,
+) {
+    for (interaction, mut color) in &mut buttons {
+        color.set_if_neq(BackgroundColor(match interaction {
+            Interaction::Hovered => COLOR_PIN_HOVER,
+            _ => COLOR_HEADER_BG,
+        }));
+    }
+}
+
+fn on_pin_button(
+    query: Query<&Interaction, (Changed<Interaction>, With<PinButton>)>,
+    state: Res<ComponentDataState>,
+    discovered: Res<DiscoveredComponents>,
+    pinboard: Query<Entity, With<PinboardContainer>>,
+    mut pending: ResMut<PinboardPendingItem>,
+    mut save_data: Option<ResMut<Persistent<PinboardSaveData>>>,
+    mut next_sidebar: ResMut<NextState<SidebarState>>,
+    titles: Query<(Entity, &PinCardTitle)>,
+    mut commands: Commands,
+) {
+    for interaction in &query {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        let Some(entity_id) = state.entity_id() else {
+            return;
+        };
+
+        let already_pinned = save_data
+            .as_ref()
+            .map(|d| d.cards.iter().any(|c| c.entity_id == entity_id))
+            .unwrap_or(false);
+
+        if already_pinned {
+            next_sidebar.set(SidebarState::Pinboard);
+            if let Some((title_entity, _)) = titles.iter().find(|(_, t)| t.0 == entity_id) {
+                commands.entity(title_entity).insert(PinCardHighlight::new());
+            }
+            continue;
+        }
+
+        let Ok(pinboard_entity) = pinboard.single() else {
+            return;
+        };
+
+        let display_name = discovered
+            .0
+            .iter()
+            .filter(|e| e.entity == entity_id)
+            .find_map(|e| match e.value.as_ref()? {
+                serde_json::Value::String(s) => Some(s.clone()),
+                v => v.get("name").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            });
+        let label = match display_name {
+            Some(name) => format!("{} {}", crate::utils::entity_display_label(entity_id), name),
+            None => format!("Entity {}", crate::utils::entity_display_label(entity_id)),
+        };
+
+        let key = pincard_key(entity_id);
+        let panel = commands.spawn_scene(pincard(label.clone(), entity_id, 0.0, 0.0, 280.0, 300.0)).id();
+        commands.entity(panel).insert(PinCard { entity_id });
+        commands.entity(pinboard_entity).add_child(panel);
+
+        pending.0.push(PinboardPendingData { entity_id, key, highlight: true });
+
+        if let Some(save_data) = save_data.as_mut() {
+            save_data.cards.push(PinCardEntry {
+                entity_id,
+                label,
+                left: 0.0,
+                top: 0.0,
+                width: 280.0,
+                height: 300.0,
+            });
+            save_data.persist().ok();
         }
     }
 }

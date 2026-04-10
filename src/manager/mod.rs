@@ -12,6 +12,8 @@ pub mod new_scene;
 
 pub mod entity_lookup;
 
+pub mod pinboard;
+
 pub fn plugin(app: &mut App) {
     app.add_plugins(BrpPlugin);
     app.add_plugins(BrpStreamPlugin);
@@ -35,4 +37,6 @@ pub fn plugin(app: &mut App) {
     new_scene::plugin(app);
 
     entity_lookup::plugin(app);
+
+    pinboard::plugin(app);
 }

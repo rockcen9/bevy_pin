@@ -9,6 +9,7 @@ use crate::{
         },
         entity_lookup::{EntityLookupRootPanel, history_panel, lookup_panel},
         new_scene::{NewScenePanelRoot, insert::spawn_entity_panel, spawned::spawned_panel},
+        pinboard::ui::{PinboardContainer, pinboard_container},
         resource::ui::resource_panels_root,
         state::ui::state_panels_root,
     },
@@ -40,6 +41,9 @@ pub fn plugin(app: &mut App) {
         Update,
         spawn_entity_lookup_panel.run_if(in_state(SidebarState::EntityLookup)),
     );
+    app.add_systems(Startup, spawn_pinboard_container);
+    app.add_systems(OnEnter(SidebarState::Pinboard), on_enter_pinboard);
+    app.add_systems(OnExit(SidebarState::Pinboard), on_exit_pinboard);
 }
 pub fn content_panel() -> impl Scene {
     bsn! {
@@ -51,6 +55,7 @@ pub fn content_panel() -> impl Scene {
             flex_direction: FlexDirection::Column,
         }
         BackgroundColor(COLOR_BG_BASE)
+
     }
 }
 fn spawn_state_panel(
@@ -191,6 +196,42 @@ fn spawn_entity_lookup_panel(
         let child = commands.spawn_scene(scene).id();
         commands.entity(entity).add_child(child);
     }
+}
+
+fn spawn_pinboard_container(mut commands: Commands) {
+    commands.spawn_scene(pinboard_container());
+}
+
+fn on_enter_pinboard(
+    pinboard: Single<Entity, With<PinboardContainer>>,
+    content: Single<Entity, With<ContentPanel>>,
+    mut commands: Commands,
+) {
+    commands.entity(*content).add_child(*pinboard);
+    commands.entity(*pinboard).insert((
+        Visibility::Visible,
+        Node {
+            display: Display::Flex,
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            align_items: AlignItems::FlexStart,
+            padding: UiRect::all(Val::Px(20.0)),
+            column_gap: Val::Px(12.0),
+            flex_wrap: FlexWrap::Wrap,
+            ..default()
+        },
+    ));
+}
+
+fn on_exit_pinboard(pinboard: Single<Entity, With<PinboardContainer>>, mut commands: Commands) {
+    commands.entity(*pinboard).remove::<ChildOf>();
+    commands.entity(*pinboard).insert((
+        Visibility::Hidden,
+        Node {
+            display: Display::None,
+            ..default()
+        },
+    ));
 }
 
 // #[cfg(feature = "dev")]
