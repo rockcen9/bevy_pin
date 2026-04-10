@@ -12,6 +12,8 @@ Bevy Pin is a remote debugging and data inspection tool for Bevy, running in the
 
 [**🎮 Try it live here!**](https://rockcen9.github.io/bevy_pin/)
 
+![Demo](./docs/demos/demo.png)
+
 *The default connection is `127.0.0.1:15702`. To connect to a custom address, append `?host=192.168.1.100:15702` to the URL.*
 *Example Bevy setup is available in [`./examples/demo_game.rs`](./examples/demo_game.rs).*
 
@@ -79,21 +81,13 @@ app.init_resource::<House>();
 pub struct Bird { /* ... */ }
 ```
 
-## Demos
-
-<p align="center">
-  <img src="./docs/demos/state.gif" width="32%" alt="States" />
-  <img src="./docs/demos/resource.gif" width="32%" alt="Resources" />
-  <img src="./docs/demos/query.gif" width="32%" alt="Components" />
-</p>
-
 ## Roadmap
 
 - [x] View component data
 - [x] Edit component data
 - [x] Pick from query history
 - [x] Spawn new scene
-- [ ] Add components to entities
+- [x] Add components to entities
 - [ ] Pin Entity by ID
 - [ ] Cache query history for the browser
 - [ ] Debug observers
