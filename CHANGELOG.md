@@ -1,3 +1,13 @@
+## [0.1.11] - 2026-04-10
+
+### 🚀 Features
+
+- Entity lookup
+## [0.1.10] - 2026-04-10
+
+### ⚙️ Miscellaneous Tasks
+
+- Release
 ## [0.1.9] - 2026-04-10
 
 ### ⚙️ Miscellaneous Tasks
