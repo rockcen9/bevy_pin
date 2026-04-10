@@ -89,6 +89,7 @@ pub fn component_list_panel() -> impl Scene {
         ComponentListPanel
         DespawnOnExit::<SidebarState>(SidebarState::EntityFilter)
         DespawnOnExit::<SidebarState>(SidebarState::NewScene)
+        DespawnOnExit::<SidebarState>(SidebarState::EntityLookup)
         Node {
             flex_direction: FlexDirection::Column,
             min_width: Val::Px(280.0),
@@ -456,7 +457,7 @@ fn update_panel_title(
                         .map(|s| s.to_string()),
                 });
             match display_name {
-                Some(name) => format!("{} {}", name, crate::utils::entity_display_label(id)),
+                Some(name) => format!("{} {}", crate::utils::entity_display_label(id), name),
                 None => format!("Entity {}", crate::utils::entity_display_label(id)),
             }
         }

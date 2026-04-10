@@ -7,6 +7,7 @@ use crate::{
             query::{history::query_history_panel, insert::insert_panel, query_panel_root},
             ui::{left_query_root, right_info_root},
         },
+        entity_lookup::{EntityLookupRootPanel, history_panel, lookup_panel},
         new_scene::{NewScenePanelRoot, insert::spawn_entity_panel, spawned::spawned_panel},
         resource::ui::resource_panels_root,
         state::ui::state_panels_root,
@@ -34,6 +35,10 @@ pub fn plugin(app: &mut App) {
     app.add_systems(
         Update,
         spawn_new_scene_panel.run_if(in_state(SidebarState::NewScene)),
+    );
+    app.add_systems(
+        Update,
+        spawn_entity_lookup_panel.run_if(in_state(SidebarState::EntityLookup)),
     );
 }
 pub fn content_panel() -> impl Scene {
@@ -151,6 +156,43 @@ fn spawn_new_scene_panel(
         commands.entity(entity).add_child(child);
     }
 }
+fn spawn_entity_lookup_panel(
+    mut commands: Commands,
+    content: Single<(Entity, Option<&Children>), With<ContentPanel>>,
+) {
+    let (entity, children) = *content;
+    if children.map(|c| c.is_empty()).unwrap_or(true) {
+        debug!("Spawning entity lookup panel into ContentPanel");
+        let scene = bsn! {
+            #EntityLookupRootPanel
+            EntityLookupRootPanel
+            DespawnOnExit::<SidebarState>(SidebarState::EntityLookup)
+            Node {
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::FlexStart,
+                padding: UiRect::all(Val::Px(20.0)),
+                column_gap: Val::Px(12.0),
+            }
+            Children [
+                (
+                    Node {
+                        flex_direction: FlexDirection::Column,
+                        row_gap: Val::Px(12.0),
+                    }
+                    Children [
+                        lookup_panel(),
+                        history_panel(),
+                    ]
+                ),
+                component_list::component_list_root(),
+                inspector::inspector_panel(),
+            ]
+        };
+        let child = commands.spawn_scene(scene).id();
+        commands.entity(entity).add_child(child);
+    }
+}
+
 // #[cfg(feature = "dev")]
 // mod debug {
 //     use bevy::prelude::*;

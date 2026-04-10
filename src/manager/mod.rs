@@ -10,6 +10,8 @@ pub mod entity_filter;
 
 pub mod new_scene;
 
+pub mod entity_lookup;
+
 pub fn plugin(app: &mut App) {
     app.add_plugins(BrpPlugin);
     app.add_plugins(BrpStreamPlugin);
@@ -31,4 +33,6 @@ pub fn plugin(app: &mut App) {
     entity_filter::plugin(app);
 
     new_scene::plugin(app);
+
+    entity_lookup::plugin(app);
 }

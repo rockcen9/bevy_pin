@@ -52,6 +52,7 @@ pub fn inspector_panel() -> impl Scene {
         InspectorPanel
         DespawnOnExit::<SidebarState>(SidebarState::EntityFilter)
         DespawnOnExit::<SidebarState>(SidebarState::NewScene)
+        DespawnOnExit::<SidebarState>(SidebarState::EntityLookup)
         Node {
             flex_direction: FlexDirection::Column,
             min_width: Val::Px(280.0),
