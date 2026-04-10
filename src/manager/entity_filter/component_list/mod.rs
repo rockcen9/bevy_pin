@@ -20,6 +20,7 @@ pub fn component_list_root() -> impl Scene {
         ComponentListRoot
         DespawnOnExit::<SidebarState>(SidebarState::EntityFilter)
         DespawnOnExit::<SidebarState>(SidebarState::NewScene)
+        DespawnOnExit::<SidebarState>(SidebarState::EntityLookup)
         Node {
             flex_direction: FlexDirection::Column,
             row_gap: Val::Px(10.0),

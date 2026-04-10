@@ -28,8 +28,9 @@ pub fn body_panel() -> impl Scene {
 #[source(ConnectionState = ConnectionState::Connected)]
 pub enum SidebarState {
     #[default]
-    State,
-    Resource,
     EntityFilter,
     NewScene,
+    EntityLookup,
+    State,
+    Resource,
 }

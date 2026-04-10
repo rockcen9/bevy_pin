@@ -21,6 +21,9 @@ struct StateButton;
 struct NewScene;
 
 #[derive(Component, Default, Clone)]
+struct EntityLookupButton;
+
+#[derive(Component, Default, Clone)]
 struct GithubButton;
 
 pub fn plugin(app: &mut App) {
@@ -32,6 +35,7 @@ pub fn plugin(app: &mut App) {
             on_resource_button,
             on_state_button,
             on_new_scene_button,
+            on_entity_lookup_button,
             on_github_button,
         )
             .run_if(in_state(ConnectionState::Connected)),
@@ -53,10 +57,11 @@ pub fn menu_panel() -> impl Scene {
         BorderColor::all(COLOR_SEPARATOR)
         Children [
             entity_query_button(),
+            entity_lookup_button(),
+            new_scene_button(),
             resource_button(),
             state_button(),
-            new_scene_button(),
-            (
+       (
                 Node {
                     flex_grow: 1.0,
                 }
@@ -149,6 +154,27 @@ fn new_scene_button() -> impl Scene {
     }
 }
 
+fn entity_lookup_button() -> impl Scene {
+    bsn! {
+        EntityLookupButton
+        Button
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Px(44.0),
+            justify_content: JustifyContent::FlexStart,
+            align_items: AlignItems::Center,
+            padding: UiRect::horizontal(Val::Px(12.0)),
+            border_radius: BorderRadius::all(Val::Px(8.0)),
+        }
+        BackgroundColor(COLOR_MENU_NORMAL)
+        Children [(
+            Text("Entity Lookup")
+            template(|_| Ok(TextFont::from_font_size(15.0)))
+            TextColor(COLOR_LABEL_SECONDARY)
+        )]
+    }
+}
+
 fn sync_menu_button_colors(
     app_state: Res<State<SidebarState>>,
     mut query: Query<
@@ -158,22 +184,26 @@ fn sync_menu_button_colors(
             Option<&ComponentButton>,
             Option<&ResourceButton>,
             Option<&NewScene>,
+            Option<&EntityLookupButton>,
         ),
         Or<(
             With<ComponentButton>,
             With<ResourceButton>,
             With<StateButton>,
             With<NewScene>,
+            With<EntityLookupButton>,
         )>,
     >,
 ) {
-    for (interaction, mut bg, comp, res, rpc) in &mut query {
+    for (interaction, mut bg, comp, res, new_scene, lookup) in &mut query {
         let is_active = if comp.is_some() {
             *app_state.get() == SidebarState::EntityFilter
         } else if res.is_some() {
             *app_state.get() == SidebarState::Resource
-        } else if rpc.is_some() {
+        } else if new_scene.is_some() {
             *app_state.get() == SidebarState::NewScene
+        } else if lookup.is_some() {
+            *app_state.get() == SidebarState::EntityLookup
         } else {
             *app_state.get() == SidebarState::State
         };
@@ -230,6 +260,17 @@ fn on_new_scene_button(
     for interaction in &query {
         if *interaction == Interaction::Pressed {
             next_state.set(SidebarState::NewScene);
+        }
+    }
+}
+
+fn on_entity_lookup_button(
+    query: Query<&Interaction, (Changed<Interaction>, With<EntityLookupButton>)>,
+    mut next_state: ResMut<NextState<SidebarState>>,
+) {
+    for interaction in &query {
+        if *interaction == Interaction::Pressed {
+            next_state.set(SidebarState::EntityLookup);
         }
     }
 }
