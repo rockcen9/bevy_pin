@@ -3,9 +3,11 @@ include make/web.mk
 
 # minor or release major, minor, patch,
 patch:
+	git pull
 	cargo release patch --no-publish --execute
 
 minor:
+	git pull
 	cargo release minor --no-publish --execute
 
 
