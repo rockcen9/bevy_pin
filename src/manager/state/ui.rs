@@ -98,10 +98,6 @@ fn spawn_state_panels(
     root: Query<Entity, With<StatePanelsRoot>>,
     mut spawned: ResMut<SpawnedStatePanels>,
 ) {
-    if !states.is_changed() {
-        return;
-    }
-
     let Ok(root_entity) = root.single() else {
         return;
     };
@@ -131,10 +127,6 @@ fn spawn_state_buttons(
     containers: Query<(Entity, &ScrollableContainer)>,
     mut spawned: ResMut<SpawnedStateButtons>,
 ) {
-    if !states.is_changed() {
-        return;
-    }
-
     for entry in &states.0 {
         if entry.variants.is_empty() || spawned.0.contains(&entry.state_type_path) {
             continue;
@@ -181,9 +173,6 @@ fn update_button_colors(
     states: Res<DiscoveredStates>,
     mut buttons: Query<(&StateButton, &Interaction, &mut BackgroundColor)>,
 ) {
-    if !states.is_changed() {
-        return;
-    }
     for (button, interaction, mut color) in &mut buttons {
         let entry = states
             .0
