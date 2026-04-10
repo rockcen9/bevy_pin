@@ -193,15 +193,17 @@ fn spawn_entity_rows(
     mut commands: Commands,
     components: Res<DiscoveredComponents>,
     containers: Query<(Entity, &ScrollableContainer)>,
+    added_containers: Query<(), Added<ScrollableContainer>>,
     rows: Query<(Entity, &ComponentEntityRow, &ChildOf)>,
 ) {
-    if !components.is_changed() {
+    if !components.is_changed() && added_containers.is_empty() {
         return;
     }
 
     debug!(
-        "spawn_entity_rows: DiscoveredComponents changed ({} entries)",
-        components.0.len()
+        "spawn_entity_rows: running (components changed: {}, new containers: {})",
+        components.is_changed(),
+        !added_containers.is_empty()
     );
 
     // Despawn rows for entities no longer in DiscoveredComponents
