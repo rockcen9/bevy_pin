@@ -25,7 +25,7 @@ struct InsertComponentButton;
 
 /// short_name -> full_type_path, populated from registry.schema on panel spawn.
 #[derive(Resource, Default)]
-struct KnownMarkerComponents(HashMap<String, String>);
+pub struct KnownMarkerComponents(pub HashMap<String, String>);
 
 pub fn plugin(app: &mut App) {
     app.init_resource::<KnownMarkerComponents>()

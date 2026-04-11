@@ -17,5 +17,8 @@ pub use brp_stream_helper::{
     AbortStream, BrpGetComponentsWatch, BrpListComponentsWatch, BrpStreamCommandsExt,
     BrpStreamPlugin, StreamData, StreamDisconnected,
 };
+pub use bevy_persistent::prelude::*;
+pub use serde::{Deserialize, Serialize};
 pub use serde_json::{self, json};
+pub use std::path::PathBuf;
 pub use webbrowser;

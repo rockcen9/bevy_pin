@@ -3,7 +3,7 @@ use crate::prelude::*;
 mod list;
 pub use list::*;
 
-mod insert_component;
+pub mod insert_component;
 pub use insert_component::insert_component_panel;
 
 mod unknown_issue;

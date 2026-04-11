@@ -65,6 +65,8 @@ pub const COLOR_SYNTAX_WITH: Color = Color::srgba(0.60, 0.85, 0.60, 0.90); // gr
 pub const COLOR_SYNTAX_WITHOUT: Color = Color::srgba(0.85, 0.55, 0.55, 0.90); // muted red — Without<>
 
 // Destructive (close / delete actions) — Apple systemRed dark mode, muted
+#[allow(dead_code)]
+pub const COLOR_DESTRUCTIVE: Color = Color::srgba(0.78, 0.18, 0.15, 1.0); // #C72E26 — base
 pub const COLOR_DESTRUCTIVE_HOVER: Color = Color::srgba(1.0, 0.271, 0.227, 0.85); // #FF453A @ 85%
 
 // Separator

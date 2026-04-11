@@ -24,6 +24,9 @@ struct NewScene;
 struct EntityLookupButton;
 
 #[derive(Component, Default, Clone)]
+struct PinboardButton;
+
+#[derive(Component, Default, Clone)]
 struct GithubButton;
 
 pub fn plugin(app: &mut App) {
@@ -36,6 +39,7 @@ pub fn plugin(app: &mut App) {
             on_state_button,
             on_new_scene_button,
             on_entity_lookup_button,
+            on_pinboard_button,
             on_github_button,
         )
             .run_if(in_state(ConnectionState::Connected)),
@@ -61,6 +65,7 @@ pub fn menu_panel() -> impl Scene {
             new_scene_button(),
             resource_button(),
             state_button(),
+            pinboard_button(),
        (
                 Node {
                     flex_grow: 1.0,
@@ -133,6 +138,27 @@ fn state_button() -> impl Scene {
     }
 }
 
+fn pinboard_button() -> impl Scene {
+    bsn! {
+        PinboardButton
+        Button
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Px(44.0),
+            justify_content: JustifyContent::FlexStart,
+            align_items: AlignItems::Center,
+            padding: UiRect::horizontal(Val::Px(12.0)),
+            border_radius: BorderRadius::all(Val::Px(8.0)),
+        }
+        BackgroundColor(COLOR_MENU_NORMAL)
+        Children [(
+            Text("Pinboard")
+            template(|_| Ok(TextFont::from_font_size(15.0)))
+            TextColor(COLOR_LABEL_SECONDARY)
+        )]
+    }
+}
+
 fn new_scene_button() -> impl Scene {
     bsn! {
         NewScene
@@ -185,6 +211,7 @@ fn sync_menu_button_colors(
             Option<&ResourceButton>,
             Option<&NewScene>,
             Option<&EntityLookupButton>,
+            Option<&PinboardButton>,
         ),
         Or<(
             With<ComponentButton>,
@@ -192,10 +219,11 @@ fn sync_menu_button_colors(
             With<StateButton>,
             With<NewScene>,
             With<EntityLookupButton>,
+            With<PinboardButton>,
         )>,
     >,
 ) {
-    for (interaction, mut bg, comp, res, new_scene, lookup) in &mut query {
+    for (interaction, mut bg, comp, res, new_scene, lookup, pinboard) in &mut query {
         let is_active = if comp.is_some() {
             *app_state.get() == SidebarState::EntityFilter
         } else if res.is_some() {
@@ -204,6 +232,8 @@ fn sync_menu_button_colors(
             *app_state.get() == SidebarState::NewScene
         } else if lookup.is_some() {
             *app_state.get() == SidebarState::EntityLookup
+        } else if pinboard.is_some() {
+            *app_state.get() == SidebarState::Pinboard
         } else {
             *app_state.get() == SidebarState::State
         };
@@ -271,6 +301,17 @@ fn on_entity_lookup_button(
     for interaction in &query {
         if *interaction == Interaction::Pressed {
             next_state.set(SidebarState::EntityLookup);
+        }
+    }
+}
+
+fn on_pinboard_button(
+    query: Query<&Interaction, (Changed<Interaction>, With<PinboardButton>)>,
+    mut next_state: ResMut<NextState<SidebarState>>,
+) {
+    for interaction in &query {
+        if *interaction == Interaction::Pressed {
+            next_state.set(SidebarState::Pinboard);
         }
     }
 }
