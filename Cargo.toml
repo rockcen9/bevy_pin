@@ -27,7 +27,7 @@ brp_helper = { path = "crates/brp_helper" }
 json_rpc_helper = { path = "crates/json_rpc_helper" }
 [package]
 name = "bevy_pin"
-version = "0.1.12"
+version = "0.1.13"
 edition = "2024"
 readme = "README.md"
 description = "A remote ECS inspector and monitor for Bevy (WASM-based)."

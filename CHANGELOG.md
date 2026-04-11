@@ -3,6 +3,10 @@
 ### 🚀 Features
 
 - Pin the entity info to pinboard
+
+### ⚙️ Miscellaneous Tasks
+
+- Release
 ## [0.1.11] - 2026-04-10
 
 ### 🚀 Features
