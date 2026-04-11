@@ -35,6 +35,9 @@ struct PinboardErrorDialog;
 struct PinboardResetButton;
 
 pub fn plugin(app: &mut App) {
+    #[cfg(target_arch = "wasm32")]
+    let save_path = PathBuf::from("local/pinboard_save.json");
+    #[cfg(not(target_arch = "wasm32"))]
     let save_path = PathBuf::from("pinboard_save.json");
 
     match Persistent::<PinboardSaveData>::builder()
@@ -172,6 +175,7 @@ fn on_reset_button(
         }
 
         let save_path = load_failed.save_path.clone();
+        #[cfg(not(target_arch = "wasm32"))]
         let _ = std::fs::remove_file(&save_path);
 
         match Persistent::<PinboardSaveData>::builder()
