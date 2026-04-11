@@ -32,13 +32,13 @@ cargo run
 
 ## [Changelog](./CHANGELOG.md)
 
+### [0.1.12] - 2026-04-11
+
+- feat: pin entity info to the pinboard
+
 ### [0.1.11] - 2026-04-10
 
 - feat: entity lookup
-
-### [0.1.10] - 2026-04-10
-
-- feat: insert component to entity
 
 ## Features
 
@@ -83,13 +83,17 @@ pub struct Bird { /* ... */ }
 
 ## Roadmap
 
-- [x] View component data
-- [x] Edit component data
-- [x] Pick from query history
-- [x] Spawn new scene
-- [x] Add components to entities
-- [ ] Pin Entity by ID
-- [ ] Cache query history for the browser
+- [x] view component data
+- [x] edit component data
+- [x] pick from query history
+- [x] spawn new scene
+- [x] add components to entities
+- [x] pin entity info to the pinboard
+- [ ] switch to a tree style view for components list
+- [ ] parent and child entity view support
+- [ ] make the pin the entities, components, states, and resources to pinboard
+- [ ] highlight data fields whenever a value changes
+- [ ] improve the ui design
 - [ ] Debug observers
 
 ## Compatible Versions
