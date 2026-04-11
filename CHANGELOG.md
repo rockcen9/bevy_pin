@@ -1,8 +1,17 @@
+## [0.1.12] - 2026-04-11
+
+### 🚀 Features
+
+- Pin the entity info to pinboard
 ## [0.1.11] - 2026-04-10
 
 ### 🚀 Features
 
 - Entity lookup
+
+### ⚙️ Miscellaneous Tasks
+
+- Release
 ## [0.1.10] - 2026-04-10
 
 ### ⚙️ Miscellaneous Tasks
