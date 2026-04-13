@@ -3,13 +3,6 @@ use crate::prelude::*;
 use crate::ui_layout::theme::widgets::entity_card::spawn_entity_card;
 use crate::ui_layout::theme::widgets::{DragHandle, close_button};
 
-// ── Re-exports for sibling modules that import from `super::pincard::*` ──────
-
-pub use crate::ui_layout::theme::widgets::entity_card::{
-    EntityCard, EntityCardDataCache, EntityCardEntry, EntityCardExpandState, EntityCardHighlight,
-    EntityCardTitle, entity_card_key,
-};
-
 // ── Marker / close button components ─────────────────────────────────────────
 
 /// Marks a card as belonging to the pinboard — only these cards receive a close button.

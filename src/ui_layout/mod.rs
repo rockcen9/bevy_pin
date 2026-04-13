@@ -7,6 +7,7 @@ pub mod debug;
 pub mod header;
 pub mod root;
 pub mod theme;
+pub use theme::*;
 
 pub fn plugin(app: &mut App) {
     app.add_systems(Startup, spawn_root_panel);

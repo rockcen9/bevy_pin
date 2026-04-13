@@ -6,7 +6,7 @@ pub mod pin_button;
 pub mod scrollable_panel;
 
 pub use close_button::close_button;
-pub use entity_card::DragHandle;
+pub use entity_card::*;
 pub use global_message::show_global_message;
 pub use pin_button::pin_button;
 pub use scrollable_panel::{ScrollableContainer, scrollable_list, titled_panel};

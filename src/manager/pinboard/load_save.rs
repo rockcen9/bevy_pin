@@ -1,10 +1,10 @@
+use crate::manager::pinboard::pin_card::spawn_pin_card;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
     COLOR_ACTIVE, COLOR_BUTTON_TEXT, COLOR_HEADER_BG, COLOR_LABEL_SECONDARY, COLOR_OVERLAY_BG,
     COLOR_PANEL_BG, COLOR_SEPARATOR, COLOR_TITLE,
 };
 
-use super::pin_card::{EntityCardEntry, entity_card_key, spawn_pin_card};
 use super::ui::PinboardContainer;
 
 #[derive(Resource, Serialize, Deserialize, Default)]

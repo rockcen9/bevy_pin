@@ -61,6 +61,7 @@ pub fn spawn_entity_card<D: Bundle + Clone, H: SceneList>(
                     width: Val::Percent(100.0),
                 }
                 BackgroundColor(COLOR_HEADER_BG)
+                EntityCardHighlight::new()
                 Children [
                     (
                         template(move |_| Ok(Text::new(label.clone())))
