@@ -1,5 +1,5 @@
 use crate::manager::entity_filter::fetch::DiscoveredComponents;
-use crate::ui_layout::theme::widgets::unpincard::spawn_unpincard;
+use crate::ui_layout::theme::widgets::explorer_card::spawn_explorer_card;
 use crate::{manager::entity_lookup::EntityLookupRootPanel, prelude::*};
 
 use super::FoundEntity;
@@ -44,7 +44,7 @@ fn sync_found_entity_panel(
             flex_grow: 1.0,
         }
         Children [
-            spawn_unpincard(label, entity_id, 0.0, 0.0, 400.0, 800.0)
+            spawn_explorer_card(label, entity_id, 0.0, 0.0, 400.0, 800.0)
         ]
     };
     let child = commands.spawn_scene(scene).id();

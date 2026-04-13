@@ -6,8 +6,8 @@ use crate::ui_layout::theme::widgets::{DragHandle, close_button};
 // ── Re-exports for sibling modules that import from `super::pincard::*` ──────
 
 pub use crate::ui_layout::theme::widgets::entity_card::{
-    EntityCard, PinCardDataCache, PinCardEntry, PinCardExpandState, PinCardHighlight, PinCardTitle,
-    pincard_key,
+    EntityCard, EntityCardDataCache, EntityCardEntry, EntityCardExpandState, EntityCardHighlight,
+    EntityCardTitle, entity_card_key,
 };
 
 // ── Marker / close button components ─────────────────────────────────────────
@@ -27,7 +27,7 @@ pub struct PinCardCloseButton {
 /// Spawns a pincard using [`entity_card`] as the visual base. The
 /// [`on_pincard_added`] observer fills in the close button once [`PinCard`]
 /// is inserted on the root entity.
-pub fn spawn_pincard(
+pub fn spawn_pin_card(
     label: String,
     entity_id: u64,
     left: f32,
@@ -60,17 +60,17 @@ pub fn spawn_pincard(
 // ── Plugin ────────────────────────────────────────────────────────────────────
 
 pub fn plugin(app: &mut App) {
-    app.add_systems(Update, on_pincard_close);
+    app.add_systems(Update, on_pin_card_close);
 }
 
 // ── System: close pincard on button press ────────────────────────────────────
 
-fn on_pincard_close(
+fn on_pin_card_close(
     buttons: Query<(&Interaction, &PinCardCloseButton), (Changed<Interaction>, With<Button>)>,
     pin_cards: Query<(Entity, &EntityCard), With<PinCard>>,
     mut save_data: Option<ResMut<Persistent<PinboardSaveData>>>,
-    mut cache: ResMut<PinCardDataCache>,
-    mut expand_state: ResMut<PinCardExpandState>,
+    mut cache: ResMut<EntityCardDataCache>,
+    mut expand_state: ResMut<EntityCardExpandState>,
     mut commands: Commands,
 ) {
     for (interaction, btn) in &buttons {

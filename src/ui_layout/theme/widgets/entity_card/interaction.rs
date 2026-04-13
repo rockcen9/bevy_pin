@@ -9,10 +9,25 @@ use crate::ui_layout::theme::palette::{COLOR_HEADER_BG, COLOR_PAUSED, COLOR_ROW_
 use crate::ui_layout::theme::widgets::ScrollableContainer;
 
 use super::components::{
-    DragHandle, EditablePinCardField, EntityCard, PinCardDataCache, PinCardExpandState,
-    PinCardExpandToggle, PinCardHighlight, PinCardInsertField, PinCardScrollOuter, pincard_key,
+    DragHandle, EditableEntityCardField, EntityCard, EntityCardDataCache, EntityCardExpandState,
+    EntityCardExpandToggle, EntityCardHighlight, EntityCardInsertField, EntityCardScrollOuter,
+    entity_card_key,
 };
 use super::layout::render_pincard;
+
+pub fn plugin(app: &mut App) {
+    app.add_observer(on_drag_handle_added).add_systems(
+        Update,
+        (
+            drive_pincard_highlight,
+            update_header_hover,
+            handle_expand_toggle,
+            render_from_cache_on_expand_change.after(handle_expand_toggle),
+            auto_select_on_focus,
+            restore_scroll_height,
+        ),
+    );
+}
 
 // ── Observer: DragHandle ──────────────────────────────────────────────────────
 
@@ -77,8 +92,8 @@ fn on_drag_end_save(
 // ── Expand / collapse ─────────────────────────────────────────────────────────
 
 pub(super) fn handle_expand_toggle(
-    toggles: Query<(&Interaction, &PinCardExpandToggle), (Changed<Interaction>, With<Button>)>,
-    mut expand_state: ResMut<PinCardExpandState>,
+    toggles: Query<(&Interaction, &EntityCardExpandToggle), (Changed<Interaction>, With<Button>)>,
+    mut expand_state: ResMut<EntityCardExpandState>,
 ) {
     for (interaction, toggle) in &toggles {
         if *interaction != Interaction::Pressed {
@@ -87,19 +102,27 @@ pub(super) fn handle_expand_toggle(
         let set = expand_state.0.entry(toggle.entity_id).or_default();
         if set.contains(&toggle.type_path) {
             set.remove(&toggle.type_path);
+            debug!(
+                "expand_toggle: collapsed entity_id={} type_path={}",
+                toggle.entity_id, toggle.type_path
+            );
         } else {
             set.insert(toggle.type_path.clone());
+            debug!(
+                "expand_toggle: expanded entity_id={} type_path={}",
+                toggle.entity_id, toggle.type_path
+            );
         }
     }
 }
 
 pub(super) fn render_from_cache_on_expand_change(
-    expand_state: Res<PinCardExpandState>,
-    cache: Res<PinCardDataCache>,
+    expand_state: Res<EntityCardExpandState>,
+    cache: Res<EntityCardDataCache>,
     containers: Query<(Entity, &ScrollableContainer)>,
     input_focus: Res<InputFocus>,
-    editable_fields: Query<&EditablePinCardField>,
-    insert_fields: Query<&PinCardInsertField>,
+    editable_fields: Query<&EditableEntityCardField>,
+    insert_fields: Query<&EntityCardInsertField>,
     mut commands: Commands,
 ) {
     if !expand_state.is_changed() {
@@ -117,8 +140,23 @@ pub(super) fn render_from_cache_on_expand_change(
         if focused_entity_id == Some(*entity_id) {
             continue;
         }
-        let key = pincard_key(*entity_id);
-        if let Some((container_entity, _)) = containers.iter().find(|(_, c)| c.0 == key) {
+        let key = entity_card_key(*entity_id);
+        let matching: Vec<Entity> = containers
+            .iter()
+            .filter(|(_, c)| c.0 == key)
+            .map(|(e, _)| e)
+            .collect();
+        if matching.is_empty() {
+            debug!(
+                "render_from_cache_on_expand_change: no container for entity_id={} key={}",
+                entity_id, key
+            );
+        }
+        for container_entity in matching {
+            debug!(
+                "render_from_cache_on_expand_change: re-rendering entity_id={} container={:?}",
+                entity_id, container_entity
+            );
             render_pincard(
                 &mut commands,
                 container_entity,
@@ -135,7 +173,7 @@ pub(super) fn render_from_cache_on_expand_change(
 pub(super) fn update_header_hover(
     mut headers: Query<
         (&Interaction, &mut BackgroundColor),
-        (Changed<Interaction>, With<PinCardExpandToggle>),
+        (Changed<Interaction>, With<EntityCardExpandToggle>),
     >,
 ) {
     for (interaction, mut bg) in &mut headers {
@@ -150,7 +188,7 @@ pub(super) fn update_header_hover(
 
 pub(super) fn auto_select_on_focus(
     input_focus: Res<InputFocus>,
-    mut text_inputs: Query<&mut EditableText, With<EditablePinCardField>>,
+    mut text_inputs: Query<&mut EditableText, With<EditableEntityCardField>>,
 ) {
     if !input_focus.is_changed() {
         return;
@@ -169,7 +207,7 @@ pub(super) fn auto_select_on_focus(
 pub(super) fn drive_pincard_highlight(
     mut commands: Commands,
     time: Res<Time>,
-    mut q: Query<(Entity, &mut BackgroundColor, &mut PinCardHighlight)>,
+    mut q: Query<(Entity, &mut BackgroundColor, &mut EntityCardHighlight)>,
 ) {
     for (entity, mut bg, mut highlight) in &mut q {
         highlight.timer.tick(time.delta());
@@ -183,7 +221,7 @@ pub(super) fn drive_pincard_highlight(
             start.alpha + (end.alpha - start.alpha) * t,
         );
         if highlight.timer.just_finished() {
-            commands.entity(entity).remove::<PinCardHighlight>();
+            commands.entity(entity).remove::<EntityCardHighlight>();
         }
     }
 }
@@ -193,7 +231,7 @@ pub(super) fn drive_pincard_highlight(
 /// When a scroll outer node is first tagged, set `height` from save data so the
 /// loaded height matches exactly what was saved (not just a `max_height` cap).
 pub(super) fn restore_scroll_height(
-    added: Query<(Entity, &PinCardScrollOuter), Added<PinCardScrollOuter>>,
+    added: Query<(Entity, &EntityCardScrollOuter), Added<EntityCardScrollOuter>>,
     save_data: Option<Res<Persistent<PinboardSaveData>>>,
     mut nodes: Query<&mut Node>,
 ) {

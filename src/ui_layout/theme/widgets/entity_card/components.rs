@@ -3,7 +3,7 @@ use crate::prelude::*;
 // ── Data ──────────────────────────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize, Clone, Default)]
-pub struct PinCardEntry {
+pub struct EntityCardEntry {
     pub entity_id: u64,
     pub label: String,
     pub left: f32,
@@ -46,14 +46,14 @@ pub struct EntityCardHeader;
 pub struct DragHandle;
 
 #[derive(Component, Clone, Default, Reflect)]
-pub struct PinCardTitle(pub u64);
+pub struct EntityCardTitle(pub u64);
 
 #[derive(Component)]
-pub struct PinCardHighlight {
+pub struct EntityCardHighlight {
     pub timer: Timer,
 }
 
-impl PinCardHighlight {
+impl EntityCardHighlight {
     pub fn new() -> Self {
         Self {
             timer: Timer::from_seconds(1.2, TimerMode::Once),
@@ -63,64 +63,64 @@ impl PinCardHighlight {
 
 /// Drives periodic BRP polling for a pincard's component data.
 #[derive(Component)]
-pub(super) struct PinCardPollTimer(pub(super) Timer);
+pub(super) struct EntityCardPollTimer(pub(super) Timer);
 
 /// Context stored on a `brp_list_components` request entity.
 #[derive(Component)]
-pub(super) struct PinCardListCtx {
+pub(super) struct EntityCardListCtx {
     pub(super) entity_id: u64,
 }
 
 /// Context stored on a `brp_get_components` request entity.
 #[derive(Component)]
-pub(super) struct PinCardGetCtx {
+pub(super) struct EntityCardGetCtx {
     pub(super) entity_id: u64,
 }
 
 /// Button on a component header row that toggles its expanded state.
 #[derive(Component, Clone, Default)]
-pub(super) struct PinCardExpandToggle {
+pub(super) struct EntityCardExpandToggle {
     pub(super) entity_id: u64,
     pub(super) type_path: String,
 }
 
 /// Right-edge drag handle for resizing the pincard width.
 #[derive(Component, Clone, Default)]
-pub(super) struct PinCardResizeHandle;
+pub(super) struct EntityCardResizeHandle;
 
 /// Left-edge drag handle for resizing the pincard width from the left.
 #[derive(Component, Clone, Default)]
-pub(super) struct PinCardResizeHandleLeft;
+pub(super) struct EntityCardResizeHandleLeft;
 
 /// Bottom-edge drag handle for resizing the pincard height.
 #[derive(Component, Clone, Default)]
-pub(super) struct PinCardResizeHandleBottom;
+pub(super) struct EntityCardResizeHandleBottom;
 
 /// Top-edge drag handle for resizing the pincard height from the top.
 #[derive(Component, Clone, Default)]
-pub(super) struct PinCardResizeHandleTop;
+pub(super) struct EntityCardResizeHandleTop;
 
 #[derive(Component, Clone, Default)]
-pub(super) struct PinCardResizeCornerBR; // bottom-right
+pub(super) struct EntityCardResizeCornerBR; // bottom-right
 
 #[derive(Component, Clone, Default)]
-pub(super) struct PinCardResizeCornerBL; // bottom-left
+pub(super) struct EntityCardResizeCornerBL; // bottom-left
 
 #[derive(Component, Clone, Default)]
-pub(super) struct PinCardResizeCornerTR; // top-right
+pub(super) struct EntityCardResizeCornerTR; // top-right
 
 #[derive(Component, Clone, Default)]
-pub(super) struct PinCardResizeCornerTL; // top-left
+pub(super) struct EntityCardResizeCornerTL; // top-left
 
 /// Marks the outer row node of the scrollable list so height resize can target it.
 #[derive(Component, Clone)]
-pub struct PinCardScrollOuter {
+pub struct EntityCardScrollOuter {
     pub entity_id: u64,
 }
 
 /// Marker on an editable field input in a pincard expanded row.
 #[derive(Component, Clone, Default)]
-pub(super) struct EditablePinCardField {
+pub(super) struct EditableEntityCardField {
     pub(super) entity_id: u64,
     pub(super) type_path: String,
     pub(super) field_key: String,
@@ -128,13 +128,13 @@ pub(super) struct EditablePinCardField {
 
 /// Marker on the insert-component text input inside a pincard.
 #[derive(Component, Clone, Default)]
-pub(super) struct PinCardInsertField {
+pub(super) struct EntityCardInsertField {
     pub(super) entity_id: u64,
 }
 
 /// Button that removes a component from a pincard entity when pressed.
 #[derive(Component, Clone)]
-pub(super) struct PinCardRemoveComponentButton {
+pub(super) struct EntityCardRemoveComponentButton {
     pub(super) entity_id: u64,
     pub(super) type_path: String,
 }
@@ -143,18 +143,18 @@ pub(super) struct PinCardRemoveComponentButton {
 
 /// short_name -> full_type_path, populated from registry.schema on first PinCard spawn.
 #[derive(Resource, Default)]
-pub struct PinCardKnownMarkerComponents(pub HashMap<String, String>);
+pub struct EntityCardKnownMarkerComponents(pub HashMap<String, String>);
 
 /// Which component rows are expanded, keyed by `entity_id → set of type_paths`.
 #[derive(Resource, Default)]
-pub struct PinCardExpandState(pub HashMap<u64, HashSet<String>>);
+pub struct EntityCardExpandState(pub HashMap<u64, HashSet<String>>);
 
 /// Last-received component data per entity, used for instant re-render on expand.
 #[derive(Resource, Default)]
-pub struct PinCardDataCache(pub HashMap<u64, serde_json::Map<String, serde_json::Value>>);
+pub struct EntityCardDataCache(pub HashMap<u64, serde_json::Map<String, serde_json::Value>>);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-pub fn pincard_key(entity_id: u64) -> String {
+pub fn entity_card_key(entity_id: u64) -> String {
     format!("pin-{}", entity_id)
 }

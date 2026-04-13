@@ -2,13 +2,13 @@ use crate::manager::entity_filter::fetch::DiscoveredComponents;
 use crate::{
     manager::pinboard::{
         load_save::{PinboardPendingData, PinboardPendingItem, PinboardSaveData},
-        pincard::spawn_pincard,
+        pin_card::spawn_pin_card,
         ui::PinboardContainer,
     },
     prelude::*,
     ui_layout::theme::widgets::{
         DragHandle,
-        entity_card::{EntityCard, PinCardEntry, pincard_key, spawn_entity_card},
+        entity_card::{EntityCard, EntityCardEntry, entity_card_key, spawn_entity_card},
         pin_button,
     },
 };
@@ -19,14 +19,14 @@ pub fn plugin(app: &mut App) {
 
 #[derive(Component, Clone, Default, Reflect)]
 #[reflect(Component)]
-pub struct UnPinCard;
+pub struct ExplorerCard;
 
 #[derive(Component, Clone)]
-pub struct UnPinCardPinButton {
+pub struct PinButton {
     pub entity_id: u64,
 }
 
-pub fn spawn_unpincard(
+pub fn spawn_explorer_card(
     label: String,
     entity_id: u64,
     left: f32,
@@ -35,8 +35,8 @@ pub fn spawn_unpincard(
     height: f32,
 ) -> impl Scene {
     bsn! {
-        #UnPinCard
-        UnPinCard
+        #ExplorerCard
+        ExplorerCard
         spawn_entity_card(
             label,
             entity_id,
@@ -45,7 +45,7 @@ pub fn spawn_unpincard(
             width,
             height,
             DragHandle,
-            bsn_list![pin_button::pin_button(UnPinCardPinButton { entity_id })]
+            bsn_list![pin_button::pin_button(PinButton { entity_id })]
         )
         Node {
             left: Val::Px(left),
@@ -57,8 +57,8 @@ pub fn spawn_unpincard(
 }
 
 fn on_pin_button(
-    buttons: Query<(&Interaction, &UnPinCardPinButton), (Changed<Interaction>, With<Button>)>,
-    cards: Query<(&EntityCard, &Node), With<UnPinCard>>,
+    buttons: Query<(&Interaction, &PinButton), (Changed<Interaction>, With<Button>)>,
+    cards: Query<(&EntityCard, &Node), With<ExplorerCard>>,
     pinboard: Query<Entity, With<PinboardContainer>>,
     components: Res<DiscoveredComponents>,
     mut save_data: Option<ResMut<Persistent<PinboardSaveData>>>,
@@ -79,7 +79,7 @@ fn on_pin_button(
 
         let Some((_ec, node)) = cards.iter().find(|(ec, _)| ec.entity_id == entity_id) else {
             debug!(
-                "on_pin_button: no UnPinCard found for entity_id={}",
+                "on_pin_button: no ExplorerCard found for entity_id={}",
                 entity_id
             );
             continue;
@@ -113,7 +113,7 @@ fn on_pin_button(
             );
             pending.0.push(PinboardPendingData {
                 entity_id,
-                key: pincard_key(entity_id),
+                key: entity_card_key(entity_id),
                 highlight: true,
             });
             next_sidebar.set(SidebarState::Pinboard);
@@ -128,9 +128,9 @@ fn on_pin_button(
             "on_pin_button: spawning pincard for entity_id={} on pinboard {:?}",
             entity_id, pinboard_entity
         );
-        let key = pincard_key(entity_id);
+        let key = entity_card_key(entity_id);
         let panel = commands
-            .spawn_scene(spawn_pincard(
+            .spawn_scene(spawn_pin_card(
                 label.clone(),
                 entity_id,
                 left,
@@ -142,7 +142,7 @@ fn on_pin_button(
         commands.entity(pinboard_entity).add_child(panel);
 
         if let Some(sd) = save_data.as_mut() {
-            sd.cards.push(PinCardEntry {
+            sd.cards.push(EntityCardEntry {
                 entity_id,
                 label: label.clone(),
                 left,

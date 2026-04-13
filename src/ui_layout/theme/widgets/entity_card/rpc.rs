@@ -9,18 +9,33 @@ use crate::ui_layout::theme::widgets::{ScrollableContainer, show_global_message}
 use crate::utils::parse_json_value;
 
 use super::components::{
-    EditablePinCardField, EntityCard, EntityCardHeader, PinCardDataCache, PinCardExpandState,
-    PinCardGetCtx, PinCardInsertField, PinCardKnownMarkerComponents, PinCardListCtx,
-    PinCardPollTimer, PinCardRemoveComponentButton, PinCardScrollOuter, PinCardTitle, pincard_key,
+    EditableEntityCardField, EntityCard, EntityCardDataCache, EntityCardExpandState,
+    EntityCardGetCtx, EntityCardHeader, EntityCardInsertField, EntityCardKnownMarkerComponents,
+    EntityCardListCtx, EntityCardPollTimer, EntityCardRemoveComponentButton, EntityCardScrollOuter,
+    EntityCardTitle, entity_card_key,
 };
 use super::layout::render_pincard;
+
+pub fn plugin(app: &mut App) {
+    app.add_systems(
+        Update,
+        (
+            init_entity_cards,
+            trigger_initial_fetch,
+            tick_pincard_polls,
+            submit_pincard_field,
+            handle_pincard_insert_submit,
+            handle_pincard_remove_component_button,
+        ),
+    );
+}
 
 // ── Polling systems ───────────────────────────────────────────────────────────
 
 pub(super) fn init_entity_cards(
     added_cards: Query<(Entity, &EntityCard, &Children), Added<EntityCard>>,
     headers: Query<Entity, With<EntityCardHeader>>,
-    known: Res<PinCardKnownMarkerComponents>,
+    known: Res<EntityCardKnownMarkerComponents>,
     server_url: Res<ServerUrl>,
     mut commands: Commands,
 ) {
@@ -42,23 +57,23 @@ fn init_single_entity_card(
     entity_card_data: &EntityCard,
     children: &Children,
     headers: &Query<Entity, With<EntityCardHeader>>,
-    known: &Res<PinCardKnownMarkerComponents>,
+    known: &Res<EntityCardKnownMarkerComponents>,
     server_url: &Res<ServerUrl>,
     commands: &mut Commands,
 ) {
     use super::components::{
-        PinCardResizeCornerBL, PinCardResizeCornerBR, PinCardResizeCornerTL, PinCardResizeCornerTR,
-        PinCardResizeHandle, PinCardResizeHandleBottom, PinCardResizeHandleLeft,
-        PinCardResizeHandleTop,
+        EntityCardResizeCornerBL, EntityCardResizeCornerBR, EntityCardResizeCornerTL,
+        EntityCardResizeCornerTR, EntityCardResizeHandle, EntityCardResizeHandleBottom,
+        EntityCardResizeHandleLeft, EntityCardResizeHandleTop,
     };
     use crate::ui_layout::theme::widgets::scrollable_list;
 
     let entity_id = entity_card_data.entity_id;
-    let key = pincard_key(entity_id);
+    let key = entity_card_key(entity_id);
 
     // Find the EntityCardHeader child and insert PinCardTitle.
     if let Some(header) = children.iter().find(|e| headers.contains(*e)) {
-        commands.entity(header).insert(PinCardTitle(entity_id));
+        commands.entity(header).insert(EntityCardTitle(entity_id));
     }
 
     // Add the scrollable body as a child scene.
@@ -68,7 +83,7 @@ fn init_single_entity_card(
     // Add resize handles as plain bundles.
     commands.entity(card_entity).with_children(|p| {
         p.spawn((
-            PinCardResizeHandle,
+            EntityCardResizeHandle,
             Pickable::default(),
             Node {
                 position_type: PositionType::Absolute,
@@ -80,7 +95,7 @@ fn init_single_entity_card(
             },
         ));
         p.spawn((
-            PinCardResizeHandleBottom,
+            EntityCardResizeHandleBottom,
             Pickable::default(),
             Node {
                 position_type: PositionType::Absolute,
@@ -92,7 +107,7 @@ fn init_single_entity_card(
             },
         ));
         p.spawn((
-            PinCardResizeHandleLeft,
+            EntityCardResizeHandleLeft,
             Pickable::default(),
             Node {
                 position_type: PositionType::Absolute,
@@ -104,7 +119,7 @@ fn init_single_entity_card(
             },
         ));
         p.spawn((
-            PinCardResizeHandleTop,
+            EntityCardResizeHandleTop,
             Pickable::default(),
             Node {
                 position_type: PositionType::Absolute,
@@ -116,7 +131,7 @@ fn init_single_entity_card(
             },
         ));
         p.spawn((
-            PinCardResizeCornerBR,
+            EntityCardResizeCornerBR,
             Pickable::default(),
             Node {
                 position_type: PositionType::Absolute,
@@ -128,7 +143,7 @@ fn init_single_entity_card(
             },
         ));
         p.spawn((
-            PinCardResizeCornerBL,
+            EntityCardResizeCornerBL,
             Pickable::default(),
             Node {
                 position_type: PositionType::Absolute,
@@ -140,7 +155,7 @@ fn init_single_entity_card(
             },
         ));
         p.spawn((
-            PinCardResizeCornerTR,
+            EntityCardResizeCornerTR,
             Pickable::default(),
             Node {
                 position_type: PositionType::Absolute,
@@ -152,7 +167,7 @@ fn init_single_entity_card(
             },
         ));
         p.spawn((
-            PinCardResizeCornerTL,
+            EntityCardResizeCornerTL,
             Pickable::default(),
             Node {
                 position_type: PositionType::Absolute,
@@ -167,7 +182,7 @@ fn init_single_entity_card(
 
     commands
         .entity(card_entity)
-        .insert(PinCardPollTimer(Timer::from_seconds(
+        .insert(EntityCardPollTimer(Timer::from_seconds(
             1.0,
             TimerMode::Repeating,
         )));
@@ -180,7 +195,7 @@ fn init_single_entity_card(
             .observe(
                 |trigger: On<Add, RpcResponse<BrpSchema>>,
                  query: Query<&RpcResponse<BrpSchema>>,
-                 mut known: ResMut<PinCardKnownMarkerComponents>,
+                 mut known: ResMut<EntityCardKnownMarkerComponents>,
                  mut commands: Commands| {
                     let entity = trigger.entity;
                     let Ok(response) = query.get(entity) else {
@@ -242,7 +257,7 @@ pub(super) fn trigger_initial_fetch(
             if let Ok(scroll_outer) = child_of.get(container_entity) {
                 commands
                     .entity(scroll_outer.0)
-                    .insert(PinCardScrollOuter { entity_id });
+                    .insert(EntityCardScrollOuter { entity_id });
             }
         }
     }
@@ -250,7 +265,7 @@ pub(super) fn trigger_initial_fetch(
 
 pub(super) fn tick_pincard_polls(
     time: Res<Time>,
-    mut cards: Query<(&EntityCard, &mut PinCardPollTimer)>,
+    mut cards: Query<(&EntityCard, &mut EntityCardPollTimer)>,
     server_url: Res<ServerUrl>,
     mut commands: Commands,
 ) {
@@ -266,7 +281,7 @@ pub fn spawn_pincard_fetch(entity_id: u64, url: &str, commands: &mut Commands) {
     let req = commands.brp_list_components(url, entity_id);
     commands
         .entity(req)
-        .insert(PinCardListCtx { entity_id })
+        .insert(EntityCardListCtx { entity_id })
         .observe(on_pincard_list_response)
         .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
             commands.entity(trigger.entity).despawn();
@@ -275,7 +290,7 @@ pub fn spawn_pincard_fetch(entity_id: u64, url: &str, commands: &mut Commands) {
 
 fn on_pincard_list_response(
     trigger: On<Add, RpcResponse<BrpListComponents>>,
-    q: Query<(&RpcResponse<BrpListComponents>, &PinCardListCtx)>,
+    q: Query<(&RpcResponse<BrpListComponents>, &EntityCardListCtx)>,
     server_url: Res<ServerUrl>,
     mut commands: Commands,
 ) {
@@ -298,7 +313,7 @@ fn on_pincard_list_response(
                 let req = commands.brp_get_components(&server_url.0, entity_id, &type_paths, false);
                 commands
                     .entity(req)
-                    .insert(PinCardGetCtx { entity_id })
+                    .insert(EntityCardGetCtx { entity_id })
                     .observe(on_pincard_get_response)
                     .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
                         commands.entity(trigger.entity).despawn();
@@ -311,13 +326,13 @@ fn on_pincard_list_response(
 
 fn on_pincard_get_response(
     trigger: On<Add, RpcResponse<BrpGetComponents>>,
-    q: Query<(&RpcResponse<BrpGetComponents>, &PinCardGetCtx)>,
+    q: Query<(&RpcResponse<BrpGetComponents>, &EntityCardGetCtx)>,
     containers: Query<(Entity, &ScrollableContainer)>,
-    expand_state: Res<PinCardExpandState>,
-    mut cache: ResMut<PinCardDataCache>,
+    expand_state: Res<EntityCardExpandState>,
+    mut cache: ResMut<EntityCardDataCache>,
     input_focus: Res<InputFocus>,
-    editable_fields: Query<&EditablePinCardField>,
-    insert_fields: Query<&PinCardInsertField>,
+    editable_fields: Query<&EditableEntityCardField>,
+    insert_fields: Query<&EntityCardInsertField>,
     mut commands: Commands,
 ) {
     let ecs_entity = trigger.entity;
@@ -333,8 +348,13 @@ fn on_pincard_get_response(
             );
         }
         Ok(data) => {
-            let key = pincard_key(ctx.entity_id);
-            if let Some((container_entity, _)) = containers.iter().find(|(_, c)| c.0 == key) {
+            let key = entity_card_key(ctx.entity_id);
+            let matching: Vec<Entity> = containers
+                .iter()
+                .filter(|(_, c)| c.0 == key)
+                .map(|(e, _)| e)
+                .collect();
+            if !matching.is_empty() {
                 if let Some(map) = data.result["components"].as_object() {
                     let new_data: serde_json::Map<_, _> =
                         map.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
@@ -355,13 +375,15 @@ fn on_pincard_get_response(
 
                     if !focused_on_this_card {
                         let cached = cache.0.get(&ctx.entity_id).unwrap();
-                        render_pincard(
-                            &mut commands,
-                            container_entity,
-                            ctx.entity_id,
-                            cached,
-                            &expand_state,
-                        );
+                        for container_entity in matching {
+                            render_pincard(
+                                &mut commands,
+                                container_entity,
+                                ctx.entity_id,
+                                cached,
+                                &expand_state,
+                            );
+                        }
                     }
                 }
             }
@@ -372,7 +394,7 @@ fn on_pincard_get_response(
 
 pub(super) fn handle_pincard_remove_component_button(
     buttons: Query<
-        (&Interaction, &PinCardRemoveComponentButton),
+        (&Interaction, &EntityCardRemoveComponentButton),
         (Changed<Interaction>, With<Button>),
     >,
     server_url: Res<ServerUrl>,
@@ -419,10 +441,10 @@ pub(super) fn handle_pincard_remove_component_button(
 pub(super) fn handle_pincard_insert_submit(
     mut input_focus: ResMut<InputFocus>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut text_inputs: Query<(&mut EditableText, &PinCardInsertField)>,
+    mut text_inputs: Query<(&mut EditableText, &EntityCardInsertField)>,
     mut font_cx: ResMut<FontCx>,
     mut layout_cx: ResMut<LayoutCx>,
-    known: Res<PinCardKnownMarkerComponents>,
+    known: Res<EntityCardKnownMarkerComponents>,
     server_url: Res<ServerUrl>,
     mut commands: Commands,
 ) {
@@ -493,7 +515,7 @@ pub(super) fn handle_pincard_insert_submit(
 pub(super) fn submit_pincard_field(
     mut input_focus: ResMut<InputFocus>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut text_inputs: Query<(&mut EditableText, &EditablePinCardField)>,
+    mut text_inputs: Query<(&mut EditableText, &EditableEntityCardField)>,
     mut font_cx: ResMut<FontCx>,
     mut layout_cx: ResMut<LayoutCx>,
     server_url: Res<ServerUrl>,

@@ -1,7 +1,7 @@
 use crate::manager::entity_filter::entity_list::ui::{ComponentEntityRow, SelectedRow};
 use crate::manager::entity_filter::fetch::DiscoveredComponents;
 use crate::prelude::*;
-use crate::ui_layout::theme::widgets::unpincard::spawn_unpincard;
+use crate::ui_layout::theme::widgets::explorer_card::spawn_explorer_card;
 
 #[derive(Component, FromTemplate)]
 pub struct ComponentListRoot;
@@ -50,7 +50,9 @@ fn show_selected_entity_card(
     let height = 800.0;
 
     let card = commands
-        .spawn_scene(spawn_unpincard(label, entity_id, left, top, width, height))
+        .spawn_scene(spawn_explorer_card(
+            label, entity_id, left, top, width, height,
+        ))
         .id();
     commands.entity(root_entity).add_child(card);
 }
