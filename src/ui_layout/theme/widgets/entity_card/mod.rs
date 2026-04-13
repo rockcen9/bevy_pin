@@ -5,7 +5,7 @@ mod resize;
 mod rpc;
 
 pub use components::{
-    DragHandle, EntityCard, EntityCardHeader, PinCardDataCache, PinCardEntry, PinCardExpandState,
+    DragHandle, EntityCard, PinCardDataCache, PinCardEntry, PinCardExpandState,
     PinCardHighlight, PinCardTitle, pincard_key,
 };
 pub use layout::*;
