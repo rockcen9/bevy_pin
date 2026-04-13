@@ -8,9 +8,6 @@ pub fn plugin(app: &mut App) {
     app.add_systems(Update, update_pin_button_hover);
 }
 
-/// Spawns a styled pin ("O") button. The caller provides their own
-/// component (e.g. `UnPinCardPinButton`) which is inserted via `payload`,
-/// keeping all click logic in the calling module.
 pub fn pin_button<B: Bundle + Clone>(payload: B) -> impl Scene {
     bsn! {
         Button

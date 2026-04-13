@@ -1,7 +1,7 @@
 use crate::manager::entity_filter::fetch::DiscoveredComponents;
 use crate::manager::new_scene::{NewScenePanelRoot, SpawnedEntityId, SpawnedEntityPanel};
 use crate::prelude::*;
-use crate::ui_layout::theme::widgets::unpincard::spawn_unpincard;
+use crate::ui_layout::theme::widgets::explorer_card::spawn_explorer_card;
 
 pub fn plugin(app: &mut App) {
     app.add_systems(Update, sync_spawned_entity_panel);
@@ -46,7 +46,7 @@ fn sync_spawned_entity_panel(
             flex_grow: 1.0,
         }
         Children [
-            spawn_unpincard(label, entity_id, 0.0, 0.0, 400.0, 800.0)
+            spawn_explorer_card(label, entity_id, 0.0, 0.0, 400.0, 800.0)
         ]
     };
     let child = commands.spawn_scene(scene).id();

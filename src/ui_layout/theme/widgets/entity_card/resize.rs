@@ -4,10 +4,21 @@ use crate::manager::pinboard::load_save::PinboardSaveData;
 use crate::prelude::*;
 
 use super::components::{
-    EntityCard, PinCardResizeCornerBL, PinCardResizeCornerBR, PinCardResizeCornerTL,
-    PinCardResizeCornerTR, PinCardResizeHandle, PinCardResizeHandleBottom, PinCardResizeHandleLeft,
-    PinCardResizeHandleTop,
+    EntityCard, EntityCardResizeCornerBL, EntityCardResizeCornerBR, EntityCardResizeCornerTR,
+    EntityCardResizeHandle, EntityCardResizeHandleBottom, EntityCardResizeHandleLeft,
+    EntityCardResizeHandleTop, EntityCardResizeCornerTL,
 };
+
+pub fn plugin(app: &mut App) {
+    app.add_observer(on_resize_handle_added)
+        .add_observer(on_resize_handle_bottom_added)
+        .add_observer(on_resize_handle_left_added)
+        .add_observer(on_resize_handle_top_added)
+        .add_observer(on_resize_corner_br_added)
+        .add_observer(on_resize_corner_bl_added)
+        .add_observer(on_resize_corner_tr_added)
+        .add_observer(on_resize_corner_tl_added);
+}
 
 // Minimum card height: header (~40 px) + minimal scroll area (60 px).
 const MIN_CARD_HEIGHT: f32 = 100.0;
@@ -15,7 +26,7 @@ const MIN_CARD_HEIGHT: f32 = 100.0;
 // ── Right edge ────────────────────────────────────────────────────────────────
 
 pub(super) fn on_resize_handle_added(
-    trigger: On<Add, PinCardResizeHandle>,
+    trigger: On<Add, EntityCardResizeHandle>,
     mut commands: Commands,
 ) {
     commands
@@ -105,7 +116,7 @@ fn on_resize_out(
 // ── Bottom edge ───────────────────────────────────────────────────────────────
 
 pub(super) fn on_resize_handle_bottom_added(
-    trigger: On<Add, PinCardResizeHandleBottom>,
+    trigger: On<Add, EntityCardResizeHandleBottom>,
     mut commands: Commands,
 ) {
     commands
@@ -189,7 +200,7 @@ fn on_resize_bottom_out(
 // ── Left edge ─────────────────────────────────────────────────────────────────
 
 pub(super) fn on_resize_handle_left_added(
-    trigger: On<Add, PinCardResizeHandleLeft>,
+    trigger: On<Add, EntityCardResizeHandleLeft>,
     mut commands: Commands,
 ) {
     commands
@@ -261,7 +272,7 @@ fn on_resize_left_drag_end(
 // ── Top edge ──────────────────────────────────────────────────────────────────
 
 pub(super) fn on_resize_handle_top_added(
-    trigger: On<Add, PinCardResizeHandleTop>,
+    trigger: On<Add, EntityCardResizeHandleTop>,
     mut commands: Commands,
 ) {
     commands
@@ -406,15 +417,17 @@ fn corner_drag_tl(delta_x: f32, delta_y: f32, card_node: &mut Node, card_compute
     });
 }
 
-fn corner_save(
-    entity_id: u64,
-    card_node: &Node,
-    save_data: &mut Persistent<PinboardSaveData>,
-) {
-    let Val::Px(left) = card_node.left else { return };
+fn corner_save(entity_id: u64, card_node: &Node, save_data: &mut Persistent<PinboardSaveData>) {
+    let Val::Px(left) = card_node.left else {
+        return;
+    };
     let Val::Px(top) = card_node.top else { return };
-    let Val::Px(width) = card_node.width else { return };
-    let Val::Px(height) = card_node.height else { return };
+    let Val::Px(width) = card_node.width else {
+        return;
+    };
+    let Val::Px(height) = card_node.height else {
+        return;
+    };
     for entry in save_data.cards.iter_mut() {
         if entry.entity_id == entity_id {
             entry.left = left;
@@ -430,7 +443,7 @@ fn corner_save(
 // ── BR corner ─────────────────────────────────────────────────────────────────
 
 pub(super) fn on_resize_corner_br_added(
-    trigger: On<Add, PinCardResizeCornerBR>,
+    trigger: On<Add, EntityCardResizeCornerBR>,
     mut commands: Commands,
 ) {
     commands
@@ -441,10 +454,19 @@ pub(super) fn on_resize_corner_br_added(
              entity_cards: Query<&EntityCard>,
              mut card_nodes: Query<(&mut Node, &ComputedNode), With<EntityCard>>| {
                 trigger.propagate(false);
-                let Ok(p) = child_of.get(trigger.entity) else { return };
+                let Ok(p) = child_of.get(trigger.entity) else {
+                    return;
+                };
                 let Ok(_) = entity_cards.get(p.0) else { return };
-                let Ok((mut cn, computed)) = card_nodes.get_mut(p.0) else { return };
-                corner_drag_br(trigger.event.delta.x, trigger.event.delta.y, &mut cn, computed);
+                let Ok((mut cn, computed)) = card_nodes.get_mut(p.0) else {
+                    return;
+                };
+                corner_drag_br(
+                    trigger.event.delta.x,
+                    trigger.event.delta.y,
+                    &mut cn,
+                    computed,
+                );
             },
         )
         .observe(
@@ -453,8 +475,12 @@ pub(super) fn on_resize_corner_br_added(
              card_nodes: Query<(&EntityCard, &Node)>,
              mut save_data: Option<ResMut<Persistent<PinboardSaveData>>>| {
                 let Some(sd) = save_data.as_mut() else { return };
-                let Ok(p) = child_of.get(trigger.entity) else { return };
-                let Ok((ec, cn)) = card_nodes.get(p.0) else { return };
+                let Ok(p) = child_of.get(trigger.entity) else {
+                    return;
+                };
+                let Ok((ec, cn)) = card_nodes.get(p.0) else {
+                    return;
+                };
                 corner_save(ec.entity_id, cn, sd);
             },
         )
@@ -485,7 +511,7 @@ pub(super) fn on_resize_corner_br_added(
 // ── BL corner ─────────────────────────────────────────────────────────────────
 
 pub(super) fn on_resize_corner_bl_added(
-    trigger: On<Add, PinCardResizeCornerBL>,
+    trigger: On<Add, EntityCardResizeCornerBL>,
     mut commands: Commands,
 ) {
     commands
@@ -496,10 +522,19 @@ pub(super) fn on_resize_corner_bl_added(
              entity_cards: Query<&EntityCard>,
              mut card_nodes: Query<(&mut Node, &ComputedNode), With<EntityCard>>| {
                 trigger.propagate(false);
-                let Ok(p) = child_of.get(trigger.entity) else { return };
+                let Ok(p) = child_of.get(trigger.entity) else {
+                    return;
+                };
                 let Ok(_) = entity_cards.get(p.0) else { return };
-                let Ok((mut cn, computed)) = card_nodes.get_mut(p.0) else { return };
-                corner_drag_bl(trigger.event.delta.x, trigger.event.delta.y, &mut cn, computed);
+                let Ok((mut cn, computed)) = card_nodes.get_mut(p.0) else {
+                    return;
+                };
+                corner_drag_bl(
+                    trigger.event.delta.x,
+                    trigger.event.delta.y,
+                    &mut cn,
+                    computed,
+                );
             },
         )
         .observe(
@@ -508,8 +543,12 @@ pub(super) fn on_resize_corner_bl_added(
              card_nodes: Query<(&EntityCard, &Node)>,
              mut save_data: Option<ResMut<Persistent<PinboardSaveData>>>| {
                 let Some(sd) = save_data.as_mut() else { return };
-                let Ok(p) = child_of.get(trigger.entity) else { return };
-                let Ok((ec, cn)) = card_nodes.get(p.0) else { return };
+                let Ok(p) = child_of.get(trigger.entity) else {
+                    return;
+                };
+                let Ok((ec, cn)) = card_nodes.get(p.0) else {
+                    return;
+                };
                 corner_save(ec.entity_id, cn, sd);
             },
         )
@@ -540,7 +579,7 @@ pub(super) fn on_resize_corner_bl_added(
 // ── TR corner ─────────────────────────────────────────────────────────────────
 
 pub(super) fn on_resize_corner_tr_added(
-    trigger: On<Add, PinCardResizeCornerTR>,
+    trigger: On<Add, EntityCardResizeCornerTR>,
     mut commands: Commands,
 ) {
     commands
@@ -551,10 +590,19 @@ pub(super) fn on_resize_corner_tr_added(
              entity_cards: Query<&EntityCard>,
              mut card_nodes: Query<(&mut Node, &ComputedNode), With<EntityCard>>| {
                 trigger.propagate(false);
-                let Ok(p) = child_of.get(trigger.entity) else { return };
+                let Ok(p) = child_of.get(trigger.entity) else {
+                    return;
+                };
                 let Ok(_) = entity_cards.get(p.0) else { return };
-                let Ok((mut cn, computed)) = card_nodes.get_mut(p.0) else { return };
-                corner_drag_tr(trigger.event.delta.x, trigger.event.delta.y, &mut cn, computed);
+                let Ok((mut cn, computed)) = card_nodes.get_mut(p.0) else {
+                    return;
+                };
+                corner_drag_tr(
+                    trigger.event.delta.x,
+                    trigger.event.delta.y,
+                    &mut cn,
+                    computed,
+                );
             },
         )
         .observe(
@@ -563,8 +611,12 @@ pub(super) fn on_resize_corner_tr_added(
              card_nodes: Query<(&EntityCard, &Node)>,
              mut save_data: Option<ResMut<Persistent<PinboardSaveData>>>| {
                 let Some(sd) = save_data.as_mut() else { return };
-                let Ok(p) = child_of.get(trigger.entity) else { return };
-                let Ok((ec, cn)) = card_nodes.get(p.0) else { return };
+                let Ok(p) = child_of.get(trigger.entity) else {
+                    return;
+                };
+                let Ok((ec, cn)) = card_nodes.get(p.0) else {
+                    return;
+                };
                 corner_save(ec.entity_id, cn, sd);
             },
         )
@@ -595,7 +647,7 @@ pub(super) fn on_resize_corner_tr_added(
 // ── TL corner ─────────────────────────────────────────────────────────────────
 
 pub(super) fn on_resize_corner_tl_added(
-    trigger: On<Add, PinCardResizeCornerTL>,
+    trigger: On<Add, EntityCardResizeCornerTL>,
     mut commands: Commands,
 ) {
     commands
@@ -606,10 +658,19 @@ pub(super) fn on_resize_corner_tl_added(
              entity_cards: Query<&EntityCard>,
              mut card_nodes: Query<(&mut Node, &ComputedNode), With<EntityCard>>| {
                 trigger.propagate(false);
-                let Ok(p) = child_of.get(trigger.entity) else { return };
+                let Ok(p) = child_of.get(trigger.entity) else {
+                    return;
+                };
                 let Ok(_) = entity_cards.get(p.0) else { return };
-                let Ok((mut cn, computed)) = card_nodes.get_mut(p.0) else { return };
-                corner_drag_tl(trigger.event.delta.x, trigger.event.delta.y, &mut cn, computed);
+                let Ok((mut cn, computed)) = card_nodes.get_mut(p.0) else {
+                    return;
+                };
+                corner_drag_tl(
+                    trigger.event.delta.x,
+                    trigger.event.delta.y,
+                    &mut cn,
+                    computed,
+                );
             },
         )
         .observe(
@@ -618,8 +679,12 @@ pub(super) fn on_resize_corner_tl_added(
              card_nodes: Query<(&EntityCard, &Node)>,
              mut save_data: Option<ResMut<Persistent<PinboardSaveData>>>| {
                 let Some(sd) = save_data.as_mut() else { return };
-                let Ok(p) = child_of.get(trigger.entity) else { return };
-                let Ok((ec, cn)) = card_nodes.get(p.0) else { return };
+                let Ok(p) = child_of.get(trigger.entity) else {
+                    return;
+                };
+                let Ok((ec, cn)) = card_nodes.get(p.0) else {
+                    return;
+                };
                 corner_save(ec.entity_id, cn, sd);
             },
         )

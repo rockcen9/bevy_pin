@@ -1,9 +1,9 @@
 pub mod close_button;
 pub mod entity_card;
+pub mod explorer_card;
 pub mod global_message;
 pub mod pin_button;
 pub mod scrollable_panel;
-pub mod unpincard;
 
 pub use close_button::close_button;
 pub use entity_card::DragHandle;
@@ -19,5 +19,5 @@ pub fn plugin(app: &mut App) {
     global_message::plugin(app);
     pin_button::plugin(app);
     scrollable_panel::plugin(app);
-    unpincard::plugin(app);
+    explorer_card::plugin(app);
 }

@@ -3,16 +3,16 @@ use bevy::{
     text::{EditableText, TextCursorStyle},
 };
 
+use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
     COLOR_HEADER_BG, COLOR_INPUT_BG, COLOR_INPUT_BORDER, COLOR_INPUT_TEXT, COLOR_LABEL_SECONDARY,
     COLOR_LABEL_TERTIARY, COLOR_PANEL_BG, COLOR_TITLE,
 };
 use crate::utils::{parse_array_field, parse_fields, unwrap_newtype};
-use crate::prelude::*;
 
 use super::components::{
-    EditablePinCardField, EntityCard, EntityCardHeader, INSERT_SENTINEL, PinCardExpandState,
-    PinCardExpandToggle, PinCardInsertField, PinCardRemoveComponentButton,
+    EditableEntityCardField, EntityCard, EntityCardExpandState, EntityCardExpandToggle,
+    EntityCardHeader, EntityCardInsertField, EntityCardRemoveComponentButton, INSERT_SENTINEL,
 };
 
 // ── Scene builders ────────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ pub(super) fn render_pincard(
     container_entity: Entity,
     entity_id: u64,
     components: &serde_json::Map<String, serde_json::Value>,
-    expand_state: &PinCardExpandState,
+    expand_state: &EntityCardExpandState,
 ) {
     commands.entity(container_entity).despawn_children();
 
@@ -170,7 +170,7 @@ fn spawn_component_header(
             flex_shrink: 0.0,
         }
         BackgroundColor(COLOR_HEADER_BG)
-        template(move |_| Ok(PinCardRemoveComponentButton { entity_id, type_path: remove_type_path.clone() }))
+        template(move |_| Ok(EntityCardRemoveComponentButton { entity_id, type_path: remove_type_path.clone() }))
         Children [(
             Text::new("X")
             template(|_| Ok(TextFont::from_font_size(9.0)))
@@ -229,7 +229,7 @@ fn spawn_component_header(
         commands
             .spawn_scene(bsn! {
                 Button
-                PinCardExpandToggle {
+                EntityCardExpandToggle {
                     entity_id: { entity_id },
                     type_path: { tp_str.clone() },
                 }
@@ -375,7 +375,7 @@ fn field_input(
         })
         BorderColor::all(COLOR_INPUT_BORDER)
         BackgroundColor(COLOR_INPUT_BG)
-        EditablePinCardField {
+        EditableEntityCardField {
             entity_id: { entity_id },
             type_path: { type_path.clone() },
             field_key: { field_key.clone() },
@@ -396,7 +396,7 @@ pub(super) fn insert_header(entity_id: u64, is_expanded: bool) -> impl Scene {
     let icon = if is_expanded { "V" } else { ">" };
     bsn! {
         Button
-        PinCardExpandToggle {
+        EntityCardExpandToggle {
             entity_id: { entity_id },
             type_path: { INSERT_SENTINEL.to_string() },
         }
@@ -446,7 +446,7 @@ pub(super) fn insert_input_row(entity_id: u64) -> impl Scene {
             }
             BorderColor::all(COLOR_INPUT_BORDER)
             BackgroundColor(COLOR_INPUT_BG)
-            PinCardInsertField { entity_id: { entity_id } }
+            EntityCardInsertField { entity_id: { entity_id } }
             template(|_| {
                 let mut t = EditableText { max_characters: Some(256), ..default() };
                 t.editor.set_text("");
