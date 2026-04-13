@@ -40,7 +40,6 @@ exclude = ["/assets", "/docs"]
 [dependencies]
 bevy = { workspace = true, features = ["bevy_scene", "2d", "ui"] }
 brp_helper = { workspace = true }
-brp_stream_helper = { workspace = true }
 crossbeam-channel = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

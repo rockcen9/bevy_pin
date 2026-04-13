@@ -3,12 +3,13 @@ use crate::{
         entity_filter::{
             component_list,
             entity_list::ui,
-            inspector,
             query::{history::query_history_panel, insert::insert_panel, query_panel_root},
             ui::{left_query_root, right_info_root},
         },
-        entity_lookup::{EntityLookupRootPanel, history_panel, lookup_panel},
-        new_scene::{NewScenePanelRoot, insert::spawn_entity_panel, spawned::spawned_panel},
+        entity_lookup::{EntityLookupPanel, EntityLookupRootPanel, history_panel, lookup_panel},
+        new_scene::{
+            NewScenePanel, NewScenePanelRoot, insert::spawn_entity_panel, history::spawned_panel,
+        },
         pinboard::ui::{PinboardContainer, pinboard_container},
         resource::ui::resource_panels_root,
         state::ui::state_panels_root,
@@ -105,7 +106,6 @@ fn spawn_component_panel(
                 (right_info_root()
                 Children [
                     component_list::component_list_root(),
-                    inspector::inspector_panel(),
                 ]),
             ]
         };
@@ -144,6 +144,8 @@ fn spawn_new_scene_panel(
             }
             Children [
                 (
+                    #NewScenePanel
+                    NewScenePanel
                     Node {
                         flex_direction: FlexDirection::Column,
                         row_gap: Val::Px(12.0),
@@ -153,8 +155,6 @@ fn spawn_new_scene_panel(
                         spawned_panel(),
                     ]
                 ),
-                component_list::component_list_root(),
-                inspector::inspector_panel(),
             ]
         };
         let child = commands.spawn_scene(scene).id();
@@ -175,11 +175,17 @@ fn spawn_entity_lookup_panel(
             Node {
                 flex_direction: FlexDirection::Row,
                 align_items: AlignItems::FlexStart,
+
+            width: Val::Percent(50.0),
+            height: Val::Percent(100.0),
+
                 padding: UiRect::all(Val::Px(20.0)),
                 column_gap: Val::Px(12.0),
             }
             Children [
                 (
+                    #EnityLookupPanel
+                    EntityLookupPanel
                     Node {
                         flex_direction: FlexDirection::Column,
                         row_gap: Val::Px(12.0),
@@ -188,9 +194,8 @@ fn spawn_entity_lookup_panel(
                         lookup_panel(),
                         history_panel(),
                     ]
+
                 ),
-                component_list::component_list_root(),
-                inspector::inspector_panel(),
             ]
         };
         let child = commands.spawn_scene(scene).id();

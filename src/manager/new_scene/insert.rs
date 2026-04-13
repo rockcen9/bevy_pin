@@ -3,9 +3,8 @@ use bevy::{
     text::{EditableText, TextCursorStyle},
 };
 
-use crate::manager::connection::ServerUrl;
-use crate::manager::entity_filter::component_list::InspectedEntity;
-use crate::manager::new_scene::spawned::{SpawnEntry, SpawnedEntities};
+use crate::manager::new_scene::history::{SpawnEntry, SpawnedEntities};
+use crate::manager::{connection::ServerUrl, new_scene::SpawnedEntityId};
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
     COLOR_BUTTON_BG, COLOR_BUTTON_HOVER, COLOR_HEADER_BG, COLOR_HINT_BG, COLOR_INPUT_BG,
@@ -30,15 +29,11 @@ struct KnownComponents(HashMap<String, String>);
 
 pub fn plugin(app: &mut App) {
     app.init_resource::<KnownComponents>()
-        .add_observer(on_panel_spawn)
-        .add_systems(
-            Update,
-            (
-                submit_on_enter,
-                handle_spawn_button,
-                update_button_hover,
-            ),
-        );
+        .add_observer(on_panel_spawn);
+    app.add_systems(
+        Update,
+        (submit_on_enter, handle_spawn_button, update_button_hover),
+    );
 }
 
 fn on_panel_spawn(
@@ -76,7 +71,10 @@ fn on_panel_spawn(
                                 .unwrap_or(type_path)
                                 .to_string();
                             known.0.entry(short).or_insert_with(|| type_path.clone());
-                            known.0.entry(type_path.clone()).or_insert_with(|| type_path.clone());
+                            known
+                                .0
+                                .entry(type_path.clone())
+                                .or_insert_with(|| type_path.clone());
                         }
                         debug!("KnownComponents: {} marker types loaded", known.0.len() / 2);
                     }
@@ -281,20 +279,23 @@ fn spawn_entity(type_path: String, url: &str, commands: &mut Commands) {
             move |trigger: On<Add, RpcResponse<BrpSpawnEntity>>,
                   query: Query<&RpcResponse<BrpSpawnEntity>>,
                   mut spawned: ResMut<SpawnedEntities>,
-                  mut inspected: ResMut<InspectedEntity>,
+                  mut selected: ResMut<SpawnedEntityId>,
                   mut commands: Commands| {
                 let entity = trigger.entity;
                 if let Ok(response) = query.get(entity) {
                     match &response.data {
                         Ok(data) => {
-                            let short =
-                                type_path.split("::").last().unwrap_or(&type_path).to_string();
+                            let short = type_path
+                                .split("::")
+                                .last()
+                                .unwrap_or(&type_path)
+                                .to_string();
                             info!("spawn_entity: #{} ({})", data.result.entity, short);
                             spawned.0.push(SpawnEntry {
                                 type_name: short,
                                 entity_id: data.result.entity,
                             });
-                            inspected.0 = Some(data.result.entity);
+                            selected.0 = Some(data.result.entity);
                         }
                         Err(e) => {
                             error!("spawn_entity failed: {}", e);

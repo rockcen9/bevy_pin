@@ -1186,7 +1186,6 @@ dependencies = [
  "bevy",
  "bevy-persistent",
  "brp_helper",
- "brp_stream_helper",
  "crossbeam-channel",
  "serde",
  "serde_json",

@@ -73,6 +73,7 @@ fn component_panel(title: String) -> impl Scene {
             flex_direction: FlexDirection::Column,
             min_width: Val::Px(280.0),
             max_width: Val::Px(280.0),
+            max_height: Val::Px(SCROLL_MAX_HEIGHT),
             border_radius: BorderRadius::all(Val::Px(10.0)),
         }
         BackgroundColor(COLOR_PANEL_BG)
@@ -95,7 +96,7 @@ fn component_panel(title: String) -> impl Scene {
                     close_button(CloseButton(close_query.clone())),
                 ]
             ),
-            scrollable_list(list_key, SCROLL_MAX_HEIGHT),
+            scrollable_list(list_key),
         ]
     }
 }

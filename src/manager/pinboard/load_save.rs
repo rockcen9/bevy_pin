@@ -4,7 +4,7 @@ use crate::ui_layout::theme::palette::{
     COLOR_PANEL_BG, COLOR_SEPARATOR, COLOR_TITLE,
 };
 
-use super::pincard::{PinCard, PinCardEntry, pincard, pincard_key};
+use super::pincard::{PinCardEntry, pincard_key, spawn_pincard};
 use super::ui::PinboardContainer;
 
 #[derive(Resource, Serialize, Deserialize, Default)]
@@ -215,7 +215,7 @@ fn load_pinboard_data(
     for entry in &save_data.cards {
         let key = pincard_key(entry.entity_id);
         let panel = commands
-            .spawn_scene(pincard(
+            .spawn_scene(spawn_pincard(
                 entry.label.clone(),
                 entry.entity_id,
                 entry.left,
@@ -224,10 +224,8 @@ fn load_pinboard_data(
                 entry.height,
             ))
             .id();
-        commands.entity(panel).insert(PinCard {
-            entity_id: entry.entity_id,
-        });
         commands.entity(pinboard_entity).add_child(panel);
+
         pending.0.push(PinboardPendingData {
             entity_id: entry.entity_id,
             key,

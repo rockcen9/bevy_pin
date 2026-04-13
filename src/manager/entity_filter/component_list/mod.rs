@@ -1,19 +1,15 @@
+use crate::manager::entity_filter::entity_list::ui::{ComponentEntityRow, SelectedRow};
+use crate::manager::entity_filter::fetch::DiscoveredComponents;
 use crate::prelude::*;
-
-mod list;
-pub use list::*;
-
-pub mod insert_component;
-pub use insert_component::insert_component_panel;
-
-mod unknown_issue;
+use crate::ui_layout::theme::widgets::unpincard::spawn_unpincard;
 
 #[derive(Component, FromTemplate)]
 pub struct ComponentListRoot;
 
 pub fn plugin(app: &mut App) {
-    app.add_plugins((list::plugin, unknown_issue::plugin, insert_component::plugin));
+    app.add_systems(Update, show_selected_entity_card);
 }
+
 pub fn component_list_root() -> impl Scene {
     bsn! {
         #ComponentListRoot
@@ -22,15 +18,39 @@ pub fn component_list_root() -> impl Scene {
         DespawnOnExit::<SidebarState>(SidebarState::NewScene)
         DespawnOnExit::<SidebarState>(SidebarState::EntityLookup)
         Node {
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(10.0),
-            min_width: Val::Px(280.0),
-            max_width: Val::Px(280.0),
-            border_radius: BorderRadius::all(Val::Px(10.0)),
+      width: Val::Percent(100.0),
+    height: Val::Percent(100.0),
+    // position_type: PositionType::Relative,
         }
         Children [
-            component_list_panel(),
-            insert_component_panel(),
+            // spawn entity card here
         ]
     }
+}
+
+fn show_selected_entity_card(
+    selected: Query<&ComponentEntityRow, Added<SelectedRow>>,
+    list_root: Query<Entity, With<ComponentListRoot>>,
+    components: Res<DiscoveredComponents>,
+    mut commands: Commands,
+) {
+    let Some(row) = selected.iter().next() else {
+        return;
+    };
+    let Ok(root_entity) = list_root.single() else {
+        return;
+    };
+    commands.entity(root_entity).despawn_children();
+    let entity_id = row.entity;
+    let label = components.display_label(entity_id);
+
+    let left = 10.0;
+    let top = 10.0;
+    let width = 400.0;
+    let height = 800.0;
+
+    let card = commands
+        .spawn_scene(spawn_unpincard(label, entity_id, left, top, width, height))
+        .id();
+    commands.entity(root_entity).add_child(card);
 }

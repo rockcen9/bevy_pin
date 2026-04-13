@@ -2,7 +2,7 @@ use bevy::input_focus::{InputFocus, tab_navigation::TabIndex};
 use bevy::text::{EditableText, TextCursorStyle};
 
 use crate::manager::connection::ServerUrl;
-use crate::manager::entity_filter::component_list::InspectedEntity;
+use crate::manager::entity_lookup::FoundEntity;
 use crate::manager::entity_lookup::history::LookupHistory;
 use crate::prelude::*;
 
@@ -161,7 +161,7 @@ fn handle_lookup_button(
             continue;
         };
         let raw = text_input.value().to_string();
-    let raw = raw.trim().to_string();
+        let raw = raw.trim().to_string();
         if raw.is_empty() {
             continue;
         }
@@ -192,7 +192,10 @@ fn update_button_hover(
 }
 
 fn send_lookup(display_index: u32, url: &str, commands: &mut Commands) {
-    debug!("EntityLookup: searching for display index {}", display_index);
+    debug!(
+        "EntityLookup: searching for display index {}",
+        display_index
+    );
     let req = commands.brp_world_query(
         url,
         json!({
@@ -207,7 +210,7 @@ fn send_lookup(display_index: u32, url: &str, commands: &mut Commands) {
         .observe(
             |trigger: On<Add, RpcResponse<BrpWorldQuery>>,
              q: Query<(&RpcResponse<BrpWorldQuery>, &LookupQueryCtx)>,
-             mut inspected: ResMut<InspectedEntity>,
+             mut lookup_entity: ResMut<FoundEntity>,
              mut history: ResMut<LookupHistory>,
              server_url: Res<ServerUrl>,
              mut commands: Commands| {
@@ -218,10 +221,9 @@ fn send_lookup(display_index: u32, url: &str, commands: &mut Commands) {
                 };
                 let target_label = format!("v{}", ctx.display_index);
                 if let Ok(data) = &response.data {
-                    let found = data
-                        .result
-                        .iter()
-                        .find(|entry| crate::utils::entity_display_label(entry.entity) == target_label);
+                    let found = data.result.iter().find(|entry| {
+                        crate::utils::entity_display_label(entry.entity) == target_label
+                    });
                     match found {
                         Some(entry) => {
                             debug!(
@@ -238,7 +240,7 @@ fn send_lookup(display_index: u32, url: &str, commands: &mut Commands) {
                                 })
                                 .map(|s| s.to_string());
 
-                            inspected.0 = Some(entity_id);
+                            lookup_entity.0 = Some(entity_id);
                             history.push(entity_id);
 
                             if let Some(name_type_path) = name_type_path {

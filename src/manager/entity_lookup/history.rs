@@ -1,4 +1,5 @@
-use crate::manager::entity_filter::component_list::InspectedEntity;
+use crate::manager::entity_lookup::FoundEntity;
+// use crate::manager::entity_filter::component_list::InspectedEntity;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
     COLOR_BUTTON_BG, COLOR_BUTTON_HOVER, COLOR_INPUT_TEXT, COLOR_SEPARATOR,
@@ -16,7 +17,13 @@ pub struct LookupHistory(pub Vec<LookupEntry>);
 impl LookupHistory {
     pub fn push(&mut self, entity_id: u64) {
         self.0.retain(|e| e.entity_id != entity_id);
-        self.0.insert(0, LookupEntry { entity_id, name: None });
+        self.0.insert(
+            0,
+            LookupEntry {
+                entity_id,
+                name: None,
+            },
+        );
     }
 
     pub fn update_name(&mut self, entity_id: u64, name: String) {
@@ -104,7 +111,7 @@ fn rebuild_history_panel(
 
 fn handle_history_item_click(
     items: Query<(&Interaction, &HistoryItem), Changed<Interaction>>,
-    mut inspected: ResMut<InspectedEntity>,
+    mut inspected: ResMut<FoundEntity>,
 ) {
     for (interaction, item) in &items {
         if *interaction == Interaction::Pressed {

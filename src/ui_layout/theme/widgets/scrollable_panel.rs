@@ -31,6 +31,7 @@ pub fn titled_panel(title: impl Into<String>, key: impl Into<String>, max_height
             flex_direction: FlexDirection::Column,
             min_width: Val::Px(280.0),
             max_width: Val::Px(280.0),
+            max_height: Val::Px({ max_height }),
             border_radius: BorderRadius::all(Val::Px(10.0)),
         }
         BackgroundColor(COLOR_PANEL_BG)
@@ -49,14 +50,15 @@ pub fn titled_panel(title: impl Into<String>, key: impl Into<String>, max_height
                     TextColor(COLOR_TITLE)
                 )]
             ),
-            scrollable_list(key, max_height),
+            scrollable_list(key),
         ]
     }
 }
 
 /// A scrollable list area with an auto-hiding scrollbar.
-/// `key` uniquely identifies this instance. `max_height` caps the visible height in pixels.
-pub fn scrollable_list(key: impl Into<String>, max_height: f32) -> impl Scene {
+/// `key` uniquely identifies this instance.
+/// Height is controlled by the parent — set `height` or `max_height` there.
+pub fn scrollable_list(key: impl Into<String>) -> impl Scene {
     let key = key.into();
     let track_key = key.clone();
     let thumb_key = key.clone();
@@ -64,7 +66,8 @@ pub fn scrollable_list(key: impl Into<String>, max_height: f32) -> impl Scene {
     bsn! {
         Node {
             flex_direction: FlexDirection::Row,
-            max_height: Val::Px({ max_height }),
+            flex_grow: 1.0,
+            min_height: Val::Px(0.0),
         }
         Children [
             (
@@ -73,6 +76,7 @@ pub fn scrollable_list(key: impl Into<String>, max_height: f32) -> impl Scene {
                     row_gap: Val::Px(4.0),
                     padding: UiRect::all(Val::Px(10.0)),
                     flex_grow: 1.0,
+                    min_height: Val::Px(0.0),
                     overflow: Overflow::scroll_y(),
                 }
                 ScrollPosition::default()
@@ -181,7 +185,7 @@ fn update_scrollbar(
         let thumb_top = (scroll_pos.0.y / max_scroll) * (track_h - thumb_h);
 
         thumb_node.height = Val::Px(thumb_h);
-        thumb_node.top = Val::Px(thumb_top.clamp(0.0, track_h - thumb_h));
+        thumb_node.top = Val::Px(thumb_top.clamp(0.0, (track_h - thumb_h).max(0.0)));
     }
 }
 

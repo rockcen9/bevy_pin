@@ -39,6 +39,9 @@ fn main() -> AppExit {
                     "json_rpc_helper=warn,",
                     "bevy_pin::manager::entity_filter::entity_list::ui=warn,",
                     "bevy_pin::manager::entity_filter::fetch::discovery=warn,",
+                    "bevy_pin::ui_layout::theme::widgets::unpincard=warn,",
+                    "bevy_pin::manager::pinboard::ui=warn,",
+                    "bevy_pin::manager::pinboard::pincard=warn,",
                 ),
                 default = bevy::log::DEFAULT_FILTER
             ),
@@ -74,10 +77,9 @@ fn main() -> AppExit {
     let default_plugins =
         default_plugins.disable::<bevy::dev_tools::render_debug::RenderDebugOverlayPlugin>();
 
+    app.add_plugins(default_plugins);
     #[cfg(feature = "dev_native")]
     dogfooding::plugin(&mut app);
-    app.add_plugins(default_plugins);
-
     // Set up the `Pause` state.
     app.init_state::<Pause>();
     app.configure_sets(Update, PausableSystems.run_if(in_state(Pause(false))));

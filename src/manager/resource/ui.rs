@@ -98,6 +98,7 @@ fn resource_panel(label: String, type_path: Arc<str>) -> impl Scene {
             flex_direction: FlexDirection::Column,
             min_width: Val::Px(280.0),
             max_width: Val::Px(280.0),
+            max_height: Val::Px(300.0),
             border_radius: BorderRadius::all(Val::Px(10.0)),
         }
         BackgroundColor(COLOR_PANEL_BG)
@@ -116,7 +117,7 @@ fn resource_panel(label: String, type_path: Arc<str>) -> impl Scene {
                     TextColor(COLOR_TITLE)
                 )]
             ),
-            scrollable_list(list_key, 300.0),
+            scrollable_list(list_key),
         ]
     }
 }
