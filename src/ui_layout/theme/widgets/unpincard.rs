@@ -6,12 +6,10 @@ use crate::{
         ui::PinboardContainer,
     },
     prelude::*,
-    ui_layout::theme::{
-        palette::{COLOR_HEADER_BG, COLOR_INPUT_TEXT, COLOR_PANEL_BG, COLOR_TITLE},
-        widgets::{
-            DragHandle,
-            entity_card::{EntityCard, EntityCardHeader, PinCardEntry, pincard_key},
-        },
+    ui_layout::theme::widgets::{
+        DragHandle,
+        entity_card::{EntityCard, PinCardEntry, pincard_key, spawn_entity_card},
+        pin_button,
     },
 };
 
@@ -39,59 +37,22 @@ pub fn spawn_unpincard(
     bsn! {
         #UnPinCard
         UnPinCard
-        EntityCard { entity_id: { entity_id }, height: { height } }
+        spawn_entity_card(
+            label,
+            entity_id,
+            left,
+            top,
+            width,
+            height,
+            DragHandle,
+            bsn_list![pin_button::pin_button(UnPinCardPinButton { entity_id })]
+        )
         Node {
-            position_type: PositionType::Absolute,
-            left: Val::Px({ left }),
-            top: Val::Px({ top }),
-            flex_direction: FlexDirection::Column,
-            width: Val::Px({ width }),
-            height: Val::Px({ height }),
-            min_width: Val::Px(180.0),
-            overflow: Overflow::clip(),
-            border_radius: BorderRadius::all(Val::Px(10.0)),
+            left: Val::Px(left),
+            top: Val::Px(top),
+            width: Val::Px(width),
+            height: Val::Px(height),
         }
-        BackgroundColor(COLOR_PANEL_BG)
-        Children [
-            (
-                EntityCardHeader
-                Button
-                DragHandle
-                Node {
-                    padding: UiRect::axes(Val::Px(14.0), Val::Px(10.0)),
-                    border_radius: BorderRadius::top(Val::Px(10.0)),
-                    flex_direction: FlexDirection::Row,
-                    justify_content: JustifyContent::SpaceBetween,
-                    align_items: AlignItems::Center,
-                    width: Val::Percent(100.0),
-                }
-                BackgroundColor(COLOR_HEADER_BG)
-                Children [
-                    (
-                        template(move |_| Ok(Text::new(label.clone())))
-                        template(|_| Ok(TextFont::from_font_size(18.0)))
-                        TextColor(COLOR_TITLE)
-                    ),
-                    (
-                        Button
-                        template(move |_| Ok(UnPinCardPinButton { entity_id }))
-                        Node {
-                            width: Val::Px(24.0),
-                            height: Val::Px(24.0),
-                            border_radius: BorderRadius::all(Val::Px(4.0)),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                        }
-                        BackgroundColor(COLOR_HEADER_BG)
-                        Children [(
-                            Text::new("O")
-                            template(|_| Ok(TextFont::from_font_size(16.0)))
-                            TextColor(COLOR_INPUT_TEXT)
-                        )]
-                    ),
-                ]
-            )
-        ]
     }
 }
 
@@ -169,7 +130,14 @@ fn on_pin_button(
         );
         let key = pincard_key(entity_id);
         let panel = commands
-            .spawn_scene(spawn_pincard(label.clone(), entity_id, left, top, width, height))
+            .spawn_scene(spawn_pincard(
+                label.clone(),
+                entity_id,
+                left,
+                top,
+                width,
+                height,
+            ))
             .id();
         commands.entity(pinboard_entity).add_child(panel);
 
