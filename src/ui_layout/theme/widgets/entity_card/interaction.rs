@@ -5,13 +5,12 @@ use bevy::{
 
 use crate::manager::pinboard::load_save::PinboardSaveData;
 use crate::prelude::*;
-use crate::ui_layout::theme::palette::{COLOR_HEADER_BG, COLOR_PAUSED, COLOR_ROW_HOVER};
+use crate::ui_layout::theme::palette::COLOR_ROW_HOVER;
 use crate::ui_layout::theme::widgets::ScrollableContainer;
 
 use super::components::{
     DragHandle, EditableEntityCardField, EntityCard, EntityCardDataCache, EntityCardExpandState,
-    EntityCardExpandToggle, EntityCardHighlight, EntityCardInsertField, EntityCardScrollOuter,
-    entity_card_key,
+    EntityCardExpandToggle, EntityCardInsertField, EntityCardScrollOuter, entity_card_key,
 };
 use super::layout::render_pincard;
 
@@ -19,7 +18,6 @@ pub fn plugin(app: &mut App) {
     app.add_observer(on_drag_handle_added).add_systems(
         Update,
         (
-            drive_pincard_highlight,
             update_header_hover,
             handle_expand_toggle,
             render_from_cache_on_expand_change.after(handle_expand_toggle),
@@ -200,30 +198,6 @@ pub(super) fn auto_select_on_focus(
         return;
     };
     text_input.queue_edit(TextEdit::SelectAll);
-}
-
-// ── Highlight animation ───────────────────────────────────────────────────────
-
-pub(super) fn drive_pincard_highlight(
-    mut commands: Commands,
-    time: Res<Time>,
-    mut q: Query<(Entity, &mut BackgroundColor, &mut EntityCardHighlight)>,
-) {
-    for (entity, mut bg, mut highlight) in &mut q {
-        highlight.timer.tick(time.delta());
-        let t = highlight.timer.fraction();
-        let start = COLOR_PAUSED.to_srgba();
-        let end = COLOR_HEADER_BG.to_srgba();
-        bg.0 = Color::srgba(
-            start.red + (end.red - start.red) * t,
-            start.green + (end.green - start.green) * t,
-            start.blue + (end.blue - start.blue) * t,
-            start.alpha + (end.alpha - start.alpha) * t,
-        );
-        if highlight.timer.just_finished() {
-            commands.entity(entity).remove::<EntityCardHighlight>();
-        }
-    }
 }
 
 // ── Restore scroll height ─────────────────────────────────────────────────────

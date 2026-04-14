@@ -41,6 +41,7 @@ fn main() -> AppExit {
                     "bevy_pin::manager::entity_filter::fetch::discovery=warn,",
                     "bevy_pin::ui_layout::theme::widgets::explorer_card=warn,",
                     "bevy_pin::ui_layout::theme::widgets::entity_card::interaction=warn,",
+                    "bevy_pin::ui_layout::theme::widgets::entity_card::highlight=warn,",
                     "bevy_pin::manager::pinboard::ui=warn,",
                     "bevy_pin::manager::pinboard::pincard=warn,",
                 ),

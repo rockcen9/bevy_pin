@@ -48,19 +48,6 @@ pub struct DragHandle;
 #[derive(Component, Clone, Default, Reflect)]
 pub struct EntityCardTitle(pub u64);
 
-#[derive(Component)]
-pub struct EntityCardHighlight {
-    pub timer: Timer,
-}
-
-impl EntityCardHighlight {
-    pub fn new() -> Self {
-        Self {
-            timer: Timer::from_seconds(1.2, TimerMode::Once),
-        }
-    }
-}
-
 /// Drives periodic BRP polling for a pincard's component data.
 #[derive(Component)]
 pub(super) struct EntityCardPollTimer(pub(super) Timer);

@@ -2,7 +2,6 @@ use crate::prelude::*;
 use crate::ui_layout::theme::widgets::ScrollableContainer;
 
 use super::load_save::PinboardPendingItem;
-use super::pin_card::{EntityCardHighlight, EntityCardTitle};
 
 #[derive(Component, Clone, Default)]
 pub struct PinboardContainer;
@@ -60,14 +59,14 @@ fn populate_pinboard(
         next_sidebar.set(SidebarState::Pinboard);
 
         if data.highlight {
-            if let Some((title_entity, _)) = titles.iter().find(|(_, t)| t.0 == data.entity_id) {
-                debug!(
-                    "populate_pinboard: inserting PinCardHighlight on {:?}",
-                    title_entity
-                );
-                commands
-                    .entity(title_entity)
-                    .insert(EntityCardHighlight::new());
+            if let Some((_title_entity, _)) = titles.iter().find(|(_, t)| t.0 == data.entity_id) {
+                // debug!(
+                //     "populate_pinboard: inserting PinCardHighlight on {:?}",
+                //     title_entity
+                // );
+                // commands
+                //     .entity(title_entity)
+                //     .insert(EntityCardHighlight::new());
             } else {
                 debug!(
                     "populate_pinboard: no PinCardTitle found for entity_id={}",
