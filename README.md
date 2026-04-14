@@ -89,7 +89,7 @@ pub struct Bird { /* ... */ }
 - [x] spawn new scene
 - [x] add components to entities
 - [x] pin entity info to the pinboard
-- [ ] switch to a tree style view for components list
+- [x] switch to a tree style view for components list
 - [ ] parent and child entity view support
 - [ ] make the pin the entities, components, states, and resources to pinboard
 - [ ] highlight data fields whenever a value changes
