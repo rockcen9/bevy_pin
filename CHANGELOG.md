@@ -1,3 +1,13 @@
+## [0.1.16] - 2026-04-14
+
+### 🚀 Features
+
+- Despawn entity for entity card
+## [0.1.15] - 2026-04-14
+
+### ⚙️ Miscellaneous Tasks
+
+- Release
 ## [0.1.14] - 2026-04-13
 
 ### ⚙️ Miscellaneous Tasks
