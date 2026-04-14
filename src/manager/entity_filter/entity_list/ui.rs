@@ -6,7 +6,7 @@ use crate::ui_layout::theme::palette::{
     COLOR_BUTTON_BG, COLOR_BUTTON_HOVER, COLOR_HEADER_BG, COLOR_INPUT_TEXT, COLOR_PANEL_BG,
     COLOR_ROW_SELECTED, COLOR_TITLE,
 };
-use crate::ui_layout::theme::widgets::{ScrollableContainer, close_button, scrollable_list};
+use crate::ui_layout::theme::widgets::{ScrollableContainer, close_button, remove_button, scrollable_list};
 use bevy::ecs::schedule::common_conditions::resource_changed;
 
 const SCROLL_MAX_HEIGHT: f32 = 300.0;
@@ -116,7 +116,7 @@ fn entity_row(entity_id: u64, query: String, value_str: String) -> impl Scene {
             column_gap: Val::Px(4.0),
         }
         Children [
-            close_button(DeleteEntityButton(entity_id)),
+            remove_button(DeleteEntityButton(entity_id)),
             (
                 Button
                 Node {

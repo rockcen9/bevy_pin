@@ -9,12 +9,29 @@ use crate::ui_layout::theme::widgets::{ScrollableContainer, show_global_message}
 use crate::utils::parse_json_value;
 
 use super::components::{
-    EditableEntityCardField, EntityCard, EntityCardDataCache, EntityCardExpandState,
-    EntityCardGetCtx, EntityCardHeader, EntityCardInsertField, EntityCardKnownMarkerComponents,
-    EntityCardListCtx, EntityCardPollTimer, EntityCardRemoveComponentButton, EntityCardScrollOuter,
-    EntityCardTitle, entity_card_key,
+    EditableEntityCardField, EntityCard, EntityCardDataCache, EntityCardDespawnButton,
+    EntityCardExpandState, EntityCardHeader, EntityCardInsertField, EntityCardKnownMarkerComponents,
+    EntityCardRemoveComponentButton, EntityCardScrollOuter, EntityCardTitle, entity_card_key,
 };
 use super::layout::render_pincard;
+
+// ── Components ─────────────────────────────────────────────────────────────────
+
+/// Drives periodic BRP polling for a pincard's component data.
+#[derive(Component)]
+pub(super) struct EntityCardPollTimer(pub(super) Timer);
+
+/// Context stored on a `brp_list_components` request entity.
+#[derive(Component)]
+pub(super) struct EntityCardListCtx {
+    pub(super) entity_id: u64,
+}
+
+/// Context stored on a `brp_get_components` request entity.
+#[derive(Component)]
+pub(super) struct EntityCardGetCtx {
+    pub(super) entity_id: u64,
+}
 
 pub fn plugin(app: &mut App) {
     app.add_systems(
@@ -26,6 +43,7 @@ pub fn plugin(app: &mut App) {
             submit_pincard_field,
             handle_pincard_insert_submit,
             handle_pincard_remove_component_button,
+            handle_pincard_despawn_button,
         ),
     );
 }
@@ -61,7 +79,7 @@ fn init_single_entity_card(
     server_url: &Res<ServerUrl>,
     commands: &mut Commands,
 ) {
-    use super::components::{
+    use super::resize::{
         EntityCardResizeCornerBL, EntityCardResizeCornerBR, EntityCardResizeCornerTL,
         EntityCardResizeCornerTR, EntityCardResizeHandle, EntityCardResizeHandleBottom,
         EntityCardResizeHandleLeft, EntityCardResizeHandleTop,
@@ -71,9 +89,13 @@ fn init_single_entity_card(
     let entity_id = entity_card_data.entity_id;
     let key = entity_card_key(entity_id);
 
-    // Find the EntityCardHeader child and insert PinCardTitle.
+    // Find the EntityCardHeader child and insert PinCardTitle + despawn button.
     if let Some(header) = children.iter().find(|e| headers.contains(*e)) {
+        let despawn_btn = commands
+            .spawn_scene(remove_button(EntityCardDespawnButton { entity_id }))
+            .id();
         commands.entity(header).insert(EntityCardTitle(entity_id));
+        commands.entity(header).insert_children(0, &[despawn_btn]);
     }
 
     // Add the scrollable body as a child scene.
@@ -433,6 +455,63 @@ pub(super) fn handle_pincard_remove_component_button(
             )
             .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
                 error!("pincard remove: request timed out");
+                commands.entity(trigger.entity).despawn();
+            });
+    }
+}
+
+pub(super) fn handle_pincard_despawn_button(
+    buttons: Query<
+        (&Interaction, &EntityCardDespawnButton),
+        (Changed<Interaction>, With<Button>),
+    >,
+    server_url: Res<ServerUrl>,
+    entity_cards: Query<(Entity, &EntityCard)>,
+    mut expand_state: ResMut<EntityCardExpandState>,
+    mut cache: ResMut<EntityCardDataCache>,
+    mut commands: Commands,
+) {
+    for (interaction, btn) in &buttons {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        let entity_id = btn.entity_id;
+        debug!("pincard: despawning entity #{}", entity_id);
+
+        // Despawn the local UI card immediately (optimistic update).
+        for (card_entity, card) in &entity_cards {
+            if card.entity_id == entity_id {
+                commands.entity(card_entity).despawn();
+                break;
+            }
+        }
+
+        // Clean up local caches.
+        expand_state.0.remove(&entity_id);
+        cache.0.remove(&entity_id);
+
+        // Fire BRP despawn.
+        let req = commands.brp_despawn_entity(&server_url.0, entity_id);
+        commands
+            .entity(req)
+            .observe(
+                move |trigger: On<Add, RpcResponse<BrpMutate>>,
+                      q: Query<&RpcResponse<BrpMutate>>,
+                      mut commands: Commands| {
+                    let ecs_entity = trigger.entity;
+                    if let Ok(response) = q.get(ecs_entity) {
+                        match &response.data {
+                            Ok(_) => debug!("pincard: entity #{} despawned via BRP", entity_id),
+                            Err(e) => {
+                                error!("pincard despawn failed for entity #{}: {e}", entity_id)
+                            }
+                        }
+                    }
+                    commands.entity(ecs_entity).despawn();
+                },
+            )
+            .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+                error!("pincard despawn: request timed out");
                 commands.entity(trigger.entity).despawn();
             });
     }

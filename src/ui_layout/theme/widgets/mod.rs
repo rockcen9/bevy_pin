@@ -3,12 +3,14 @@ pub mod entity_card;
 pub mod explorer_card;
 pub mod global_message;
 pub mod pin_button;
+pub mod remove_button;
 pub mod scrollable_panel;
 
 pub use close_button::close_button;
 pub use entity_card::*;
 pub use global_message::show_global_message;
 pub use pin_button::pin_button;
+pub use remove_button::*;
 pub use scrollable_panel::{ScrollableContainer, scrollable_list, titled_panel};
 
 use crate::prelude::*;
@@ -18,6 +20,7 @@ pub fn plugin(app: &mut App) {
     entity_card::plugin(app);
     global_message::plugin(app);
     pin_button::plugin(app);
+    remove_button::plugin(app);
     scrollable_panel::plugin(app);
     explorer_card::plugin(app);
 }

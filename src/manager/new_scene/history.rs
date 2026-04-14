@@ -2,10 +2,9 @@ use crate::manager::connection::ServerUrl;
 use crate::manager::new_scene::SpawnedEntityId;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
-    COLOR_BUTTON_BG, COLOR_BUTTON_HOVER, COLOR_DESTRUCTIVE_HOVER, COLOR_INPUT_TEXT,
-    COLOR_MENU_NORMAL, COLOR_SEPARATOR,
+    COLOR_BUTTON_BG, COLOR_BUTTON_HOVER, COLOR_INPUT_TEXT, COLOR_SEPARATOR,
 };
-use crate::ui_layout::theme::widgets::{ScrollableContainer, close_button, titled_panel};
+use crate::ui_layout::theme::widgets::{ScrollableContainer, titled_panel};
 
 #[derive(Clone)]
 pub struct SpawnEntry {
@@ -22,12 +21,17 @@ pub struct SpawnedItem {
     pub entity_id: u64,
 }
 
-/// Despawns the remote entity via BRP when clicked.
-#[derive(Component, Clone)]
-pub struct DespawnEntityButton(pub u64);
-
 #[derive(Component, Clone, Default, Reflect)]
 struct SpawnedPanelRoot;
+
+#[derive(Resource)]
+struct SpawnedRefreshTimer(Timer);
+
+impl Default for SpawnedRefreshTimer {
+    fn default() -> Self {
+        Self(Timer::from_seconds(5.0, TimerMode::Repeating))
+    }
+}
 
 pub fn spawned_panel() -> impl Scene {
     bsn! {
@@ -39,16 +43,61 @@ pub fn spawned_panel() -> impl Scene {
 }
 
 pub fn plugin(app: &mut App) {
-    app.init_resource::<SpawnedEntities>().add_systems(
-        Update,
-        (
-            rebuild_spawned_panel,
-            handle_spawned_item_click,
-            update_spawned_item_hover,
-            handle_despawn_button_click,
-            update_despawn_button_hover,
-        ),
+    app.init_resource::<SpawnedEntities>()
+        .init_resource::<SpawnedRefreshTimer>()
+        .add_systems(
+            Update,
+            (
+                refresh_spawned,
+                rebuild_spawned_panel,
+                handle_spawned_item_click,
+                update_spawned_item_hover,
+            ),
+        );
+}
+
+fn refresh_spawned(
+    time: Res<Time>,
+    mut timer: ResMut<SpawnedRefreshTimer>,
+    spawned: Res<SpawnedEntities>,
+    server_url: Res<ServerUrl>,
+    mut commands: Commands,
+) {
+    timer.0.tick(time.delta());
+    if !timer.0.just_finished() || spawned.0.is_empty() {
+        return;
+    }
+
+    let req = commands.brp_world_query(
+        &server_url.0,
+        json!({
+            "data": { "components": [], "option": "all", "has": [] },
+            "filter": { "with": [], "without": [] },
+            "strict": false
+        }),
     );
+    commands
+        .entity(req)
+        .observe(
+            |trigger: On<Add, RpcResponse<BrpWorldQuery>>,
+             q: Query<&RpcResponse<BrpWorldQuery>>,
+             mut spawned: ResMut<SpawnedEntities>,
+             mut commands: Commands| {
+                let ecs_entity = trigger.entity;
+                let Ok(response) = q.get(ecs_entity) else {
+                    commands.entity(ecs_entity).despawn();
+                    return;
+                };
+                if let Ok(data) = &response.data {
+                    let live_ids: Vec<u64> = data.result.iter().map(|e| e.entity).collect();
+                    spawned.0.retain(|e| live_ids.contains(&e.entity_id));
+                }
+                commands.entity(ecs_entity).despawn();
+            },
+        )
+        .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+            commands.entity(trigger.entity).despawn();
+        });
 }
 
 fn rebuild_spawned_panel(
@@ -101,16 +150,13 @@ fn spawned_item(entry: SpawnEntry) -> impl Scene {
     );
     let type_name_click = entry.type_name.clone();
     let entity_id_click = entry.entity_id;
-    let entity_id = entry.entity_id;
     bsn! {
         Node {
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
             width: Val::Percent(100.0),
-            column_gap: Val::Px(4.0),
         }
         Children [
-            close_button(DespawnEntityButton(entity_id)),
             (
                 template(move |_| Ok(SpawnedItem { type_name: type_name_click.clone(), entity_id: entity_id_click }))
                 Button
@@ -171,73 +217,3 @@ fn update_spawned_item_hover(
     }
 }
 
-fn handle_despawn_button_click(
-    items: Query<(&Interaction, &DespawnEntityButton), Changed<Interaction>>,
-    server_url: Res<ServerUrl>,
-    mut spawned: ResMut<SpawnedEntities>,
-    mut commands: Commands,
-) {
-    for (interaction, btn) in &items {
-        debug!(
-            "handle_despawn_button_click: interaction={:?} entity_id={}",
-            interaction, btn.0
-        );
-        if *interaction != Interaction::Pressed {
-            continue;
-        }
-        let entity_id = btn.0;
-        debug!(
-            "handle_despawn_button_click: sending BRP despawn for entity_id={} url={}",
-            entity_id, server_url.0
-        );
-        let req = commands.brp_despawn_entity(&server_url.0, entity_id);
-        debug!("handle_despawn_button_click: BRP request entity={:?}", req);
-        commands
-            .entity(req)
-            .observe(
-                move |trigger: On<Add, RpcResponse<BrpMutate>>,
-                      query: Query<&RpcResponse<BrpMutate>>,
-                      mut commands: Commands| {
-                    let entity = trigger.entity;
-                    if let Ok(response) = query.get(entity) {
-                        match &response.data {
-                            Ok(_) => info!("despawn_entity #{} ok", entity_id),
-                            Err(e) => error!("despawn_entity #{} failed: {}", entity_id, e),
-                        }
-                    }
-                    commands.entity(entity).despawn();
-                },
-            )
-            .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
-                error!(
-                    "handle_despawn_button_click: timeout waiting for BRP response entity={:?}",
-                    trigger.entity
-                );
-                commands.entity(trigger.entity).despawn();
-            });
-        debug!(
-            "handle_despawn_button_click: removing entity_id={} from spawned list (before: {})",
-            entity_id,
-            spawned.0.len()
-        );
-        spawned.0.retain(|e| e.entity_id != entity_id);
-        debug!(
-            "handle_despawn_button_click: spawned list after retain: {}",
-            spawned.0.len()
-        );
-    }
-}
-
-fn update_despawn_button_hover(
-    mut items: Query<
-        (&Interaction, &mut BackgroundColor),
-        (Changed<Interaction>, With<DespawnEntityButton>),
-    >,
-) {
-    for (interaction, mut color) in &mut items {
-        color.set_if_neq(BackgroundColor(match interaction {
-            Interaction::Hovered => COLOR_DESTRUCTIVE_HOVER,
-            _ => COLOR_MENU_NORMAL,
-        }));
-    }
-}

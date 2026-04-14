@@ -9,10 +9,16 @@ use crate::ui_layout::theme::palette::COLOR_ROW_HOVER;
 use crate::ui_layout::theme::widgets::ScrollableContainer;
 
 use super::components::{
-    DragHandle, EditableEntityCardField, EntityCard, EntityCardDataCache, EntityCardExpandState,
+    EditableEntityCardField, EntityCard, EntityCardDataCache, EntityCardExpandState,
     EntityCardExpandToggle, EntityCardInsertField, EntityCardScrollOuter, entity_card_key,
 };
 use super::layout::render_pincard;
+
+// ── Components ─────────────────────────────────────────────────────────────────
+
+/// Place on the header row (via `drag_bundle`) to enable drag-to-move behaviour.
+#[derive(Component, Clone, Default)]
+pub struct DragHandle;
 
 pub fn plugin(app: &mut App) {
     app.add_observer(on_drag_handle_added).add_systems(

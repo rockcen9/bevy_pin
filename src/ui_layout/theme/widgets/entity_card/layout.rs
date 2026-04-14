@@ -157,27 +157,13 @@ fn spawn_component_header(
     is_expanded: bool,
 ) -> Entity {
     // ── remove button ─────────────────────────────────────────────────────────
-    use crate::ui_layout::theme::widgets::close_button::CloseButtonWidget;
     let remove_type_path = type_path.to_string();
-    let remove_btn = commands.spawn_scene(bsn! {
-        Button
-        CloseButtonWidget
-        Node {
-            width: Val::Px(14.0),
-            height: Val::Px(14.0),
-            border_radius: BorderRadius::all(Val::Px(3.0)),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            flex_shrink: 0.0,
-        }
-        BackgroundColor(COLOR_HEADER_BG)
-        template(move |_| Ok(EntityCardRemoveComponentButton { entity_id, type_path: remove_type_path.clone() }))
-        Children [(
-            Text::new("X")
-            template(|_| Ok(TextFont::from_font_size(9.0)))
-            TextColor(COLOR_INPUT_TEXT)
-        )]
-    }).id();
+    let remove_btn = commands
+        .spawn_scene(remove_button(EntityCardRemoveComponentButton {
+            entity_id,
+            type_path: remove_type_path,
+        }))
+        .id();
 
     // ── expand icon + name ────────────────────────────────────────────────────
     let icon = if is_expandable {
@@ -283,7 +269,7 @@ fn spawn_field_row(
                 flex_direction: FlexDirection::Row,
                 align_items: AlignItems::Center,
                 padding: UiRect {
-                    left: Val::Px(32.0),
+                    left: Val::Px(44.0),
                     right: Val::Px(6.0),
                     top: Val::Px(1.0),
                     bottom: Val::Px(1.0),

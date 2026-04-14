@@ -3,11 +3,37 @@ use bevy::window::{CursorIcon, SystemCursorIcon};
 use crate::manager::pinboard::load_save::PinboardSaveData;
 use crate::prelude::*;
 
-use super::components::{
-    EntityCard, EntityCardResizeCornerBL, EntityCardResizeCornerBR, EntityCardResizeCornerTR,
-    EntityCardResizeHandle, EntityCardResizeHandleBottom, EntityCardResizeHandleLeft,
-    EntityCardResizeHandleTop, EntityCardResizeCornerTL,
-};
+use super::components::EntityCard;
+
+// ── Components ─────────────────────────────────────────────────────────────────
+
+/// Right-edge drag handle for resizing the pincard width.
+#[derive(Component, Clone, Default)]
+pub(super) struct EntityCardResizeHandle;
+
+/// Left-edge drag handle for resizing the pincard width from the left.
+#[derive(Component, Clone, Default)]
+pub(super) struct EntityCardResizeHandleLeft;
+
+/// Bottom-edge drag handle for resizing the pincard height.
+#[derive(Component, Clone, Default)]
+pub(super) struct EntityCardResizeHandleBottom;
+
+/// Top-edge drag handle for resizing the pincard height from the top.
+#[derive(Component, Clone, Default)]
+pub(super) struct EntityCardResizeHandleTop;
+
+#[derive(Component, Clone, Default)]
+pub(super) struct EntityCardResizeCornerBR; // bottom-right
+
+#[derive(Component, Clone, Default)]
+pub(super) struct EntityCardResizeCornerBL; // bottom-left
+
+#[derive(Component, Clone, Default)]
+pub(super) struct EntityCardResizeCornerTR; // top-right
+
+#[derive(Component, Clone, Default)]
+pub(super) struct EntityCardResizeCornerTL; // top-left
 
 pub fn plugin(app: &mut App) {
     app.add_observer(on_resize_handle_added)
