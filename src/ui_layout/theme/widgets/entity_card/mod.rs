@@ -8,6 +8,7 @@ mod rpc;
 use crate::prelude::*;
 pub use components::*;
 pub use highlight::*;
+pub use interaction::DragHandle;
 pub use layout::*;
 
 pub fn plugin(app: &mut App) {

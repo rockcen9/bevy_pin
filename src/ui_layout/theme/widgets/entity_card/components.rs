@@ -41,28 +41,8 @@ pub struct EntityCard {
 #[derive(Component, Clone, Default)]
 pub struct EntityCardHeader;
 
-/// Place on the header row (via `drag_bundle`) to enable drag-to-move behaviour.
-#[derive(Component, Clone, Default)]
-pub struct DragHandle;
-
 #[derive(Component, Clone, Default, Reflect)]
 pub struct EntityCardTitle(pub u64);
-
-/// Drives periodic BRP polling for a pincard's component data.
-#[derive(Component)]
-pub(super) struct EntityCardPollTimer(pub(super) Timer);
-
-/// Context stored on a `brp_list_components` request entity.
-#[derive(Component)]
-pub(super) struct EntityCardListCtx {
-    pub(super) entity_id: u64,
-}
-
-/// Context stored on a `brp_get_components` request entity.
-#[derive(Component)]
-pub(super) struct EntityCardGetCtx {
-    pub(super) entity_id: u64,
-}
 
 /// Button on a component header row that toggles its expanded state.
 #[derive(Component, Clone, Default)]
@@ -70,34 +50,6 @@ pub(super) struct EntityCardExpandToggle {
     pub(super) entity_id: u64,
     pub(super) type_path: String,
 }
-
-/// Right-edge drag handle for resizing the pincard width.
-#[derive(Component, Clone, Default)]
-pub(super) struct EntityCardResizeHandle;
-
-/// Left-edge drag handle for resizing the pincard width from the left.
-#[derive(Component, Clone, Default)]
-pub(super) struct EntityCardResizeHandleLeft;
-
-/// Bottom-edge drag handle for resizing the pincard height.
-#[derive(Component, Clone, Default)]
-pub(super) struct EntityCardResizeHandleBottom;
-
-/// Top-edge drag handle for resizing the pincard height from the top.
-#[derive(Component, Clone, Default)]
-pub(super) struct EntityCardResizeHandleTop;
-
-#[derive(Component, Clone, Default)]
-pub(super) struct EntityCardResizeCornerBR; // bottom-right
-
-#[derive(Component, Clone, Default)]
-pub(super) struct EntityCardResizeCornerBL; // bottom-left
-
-#[derive(Component, Clone, Default)]
-pub(super) struct EntityCardResizeCornerTR; // top-right
-
-#[derive(Component, Clone, Default)]
-pub(super) struct EntityCardResizeCornerTL; // top-left
 
 /// Marks the outer row node of the scrollable list so height resize can target it.
 #[derive(Component, Clone)]
@@ -124,6 +76,12 @@ pub(super) struct EntityCardInsertField {
 pub(super) struct EntityCardRemoveComponentButton {
     pub(super) entity_id: u64,
     pub(super) type_path: String,
+}
+
+/// Button that despawns the entire remote entity (and closes the card) when pressed.
+#[derive(Component, Clone)]
+pub(super) struct EntityCardDespawnButton {
+    pub(super) entity_id: u64,
 }
 
 // ── Resources ─────────────────────────────────────────────────────────────────
