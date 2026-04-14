@@ -3,8 +3,6 @@ use bevy::window::{CursorIcon, SystemCursorIcon};
 use crate::manager::pinboard::load_save::PinboardSaveData;
 use crate::prelude::*;
 
-use super::components::EntityCard;
-
 // ── Components ─────────────────────────────────────────────────────────────────
 
 /// Right-edge drag handle for resizing the pincard width.

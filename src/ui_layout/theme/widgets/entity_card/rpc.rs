@@ -3,16 +3,12 @@ use bevy::{
     text::{EditableText, FontCx, LayoutCx},
 };
 
-use crate::manager::connection::ServerUrl;
+use crate::manager::entity_filter::fetch::DiscoveredComponents;
 use crate::prelude::*;
 use crate::ui_layout::theme::widgets::{ScrollableContainer, show_global_message};
 use crate::utils::parse_json_value;
+use crate::{manager::connection::ServerUrl, prelude::entity_card::*};
 
-use super::components::{
-    EditableEntityCardField, EntityCard, EntityCardDataCache, EntityCardDespawnButton,
-    EntityCardExpandState, EntityCardHeader, EntityCardInsertField, EntityCardKnownMarkerComponents,
-    EntityCardRemoveComponentButton, EntityCardScrollOuter, EntityCardTitle, entity_card_key,
-};
 use super::layout::render_pincard;
 
 // ── Components ─────────────────────────────────────────────────────────────────
@@ -351,6 +347,8 @@ fn on_pincard_get_response(
     q: Query<(&RpcResponse<BrpGetComponents>, &EntityCardGetCtx)>,
     containers: Query<(Entity, &ScrollableContainer)>,
     expand_state: Res<EntityCardExpandState>,
+    children_cache: Res<EntityCardChildrenCache>,
+    discovered_components: Res<DiscoveredComponents>,
     mut cache: ResMut<EntityCardDataCache>,
     input_focus: Res<InputFocus>,
     editable_fields: Query<&EditableEntityCardField>,
@@ -404,6 +402,8 @@ fn on_pincard_get_response(
                                 ctx.entity_id,
                                 cached,
                                 &expand_state,
+                                &children_cache,
+                                &discovered_components,
                             );
                         }
                     }
@@ -461,10 +461,7 @@ pub(super) fn handle_pincard_remove_component_button(
 }
 
 pub(super) fn handle_pincard_despawn_button(
-    buttons: Query<
-        (&Interaction, &EntityCardDespawnButton),
-        (Changed<Interaction>, With<Button>),
-    >,
+    buttons: Query<(&Interaction, &EntityCardDespawnButton), (Changed<Interaction>, With<Button>)>,
     server_url: Res<ServerUrl>,
     entity_cards: Query<(Entity, &EntityCard)>,
     mut expand_state: ResMut<EntityCardExpandState>,
