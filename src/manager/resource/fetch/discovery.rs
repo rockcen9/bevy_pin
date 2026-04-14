@@ -2,6 +2,55 @@ use super::{DiscoveredResources, ResourceEntry, ResourceScreenRoot};
 use crate::manager::connection::ServerUrl;
 use crate::prelude::*;
 
+const BEVY_ENGINE_CRATES: &[&str] = &[
+    "bevy_a11y",
+    "bevy_animation",
+    "bevy_app",
+    "bevy_asset",
+    "bevy_audio",
+    "bevy_camera",
+    "bevy_color",
+    "bevy_core",
+    "bevy_core_pipeline",
+    "bevy_dev_tools",
+    "bevy_diagnostic",
+    "bevy_ecs",
+    "bevy_gilrs",
+    "bevy_gizmos",
+    "bevy_gizmos_render",
+    "bevy_hierarchy",
+    "bevy_image",
+    "bevy_input",
+    "bevy_input_focus",
+    "bevy_light",
+    "bevy_log",
+    "bevy_math",
+    "bevy_mesh",
+    "bevy_pbr",
+    "bevy_picking",
+    "bevy_platform",
+    "bevy_reflect",
+    "bevy_remote",
+    "bevy_render",
+    "bevy_scene",
+    "bevy_sprite",
+    "bevy_sprite_render",
+    "bevy_state",
+    "bevy_tasks",
+    "bevy_text",
+    "bevy_time",
+    "bevy_transform",
+    "bevy_ui",
+    "bevy_ui_render",
+    "bevy_utils",
+    "bevy_window",
+    "bevy_winit",
+];
+
+fn is_bevy_engine_crate(crate_name: &str) -> bool {
+    BEVY_ENGINE_CRATES.contains(&crate_name)
+}
+
 pub(super) fn plugin(app: &mut App) {
     app.add_observer(on_add_resource_screen_root);
 }
@@ -32,7 +81,10 @@ fn on_add_resource_screen_root(
                     let discovered: Vec<String> = data
                         .result
                         .iter()
-                        .filter(|s| !s.starts_with("bevy_"))
+                        .filter(|s| {
+                            let crate_name = s.split("::").next().unwrap_or("");
+                            !is_bevy_engine_crate(crate_name)
+                        })
                         .cloned()
                         .collect();
 
@@ -65,9 +117,7 @@ fn on_add_resource_screen_root(
                 commands.entity(entity).despawn();
             },
         )
-        .observe(
-            |trigger: On<Add, TimeoutError>, mut commands: Commands| {
-                commands.entity(trigger.entity).despawn();
-            },
-        );
+        .observe(|trigger: On<Add, TimeoutError>, mut commands: Commands| {
+            commands.entity(trigger.entity).despawn();
+        });
 }
