@@ -116,4 +116,6 @@ Compatible with Bevy versions without BRP breaking changes:
 
 - [Flecs Explorer](https://www.flecs.dev/explorer/) - Real-time ECS data visualization and debugging.
 
+- [Heptabase](https://heptabase.com) - Conceptual foundation for the spatial UI and visual thinking interface.
+
 - [bevy_cli](https://github.com/theBevyFlock/bevy_cli) -  Significantly simplifies the WebAssembly build workflow.
