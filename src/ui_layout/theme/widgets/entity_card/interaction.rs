@@ -121,6 +121,7 @@ pub(super) fn render_from_cache_on_expand_change(
     expand_state: Res<EntityCardExpandState>,
     cache: Res<EntityCardDataCache>,
     children_cache: Res<EntityCardChildrenCache>,
+    parent_cache: Res<super::childof::EntityCardParentCache>,
     discovered_components: Res<DiscoveredComponents>,
     containers: Query<(Entity, &ScrollableContainer)>,
     input_focus: Res<InputFocus>,
@@ -167,6 +168,7 @@ pub(super) fn render_from_cache_on_expand_change(
                 components,
                 &expand_state,
                 &children_cache,
+                &parent_cache,
                 &discovered_components,
             );
         }

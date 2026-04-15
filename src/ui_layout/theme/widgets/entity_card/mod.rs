@@ -1,4 +1,5 @@
 mod children;
+mod childof;
 mod highlight;
 mod interaction;
 mod layout;
@@ -7,6 +8,7 @@ mod rpc;
 
 use crate::prelude::*;
 pub use children::EntityCardChildrenCache;
+pub use childof::EntityCardParentCache;
 pub use core::*;
 pub use highlight::*;
 pub use interaction::DragHandle;
@@ -18,6 +20,7 @@ pub fn plugin(app: &mut App) {
         .init_resource::<EntityCardKnownMarkerComponents>()
         .add_plugins((
             children::plugin,
+            childof::plugin,
             highlight::plugin,
             interaction::plugin,
             resize::plugin,

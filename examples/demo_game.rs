@@ -162,28 +162,38 @@ pub struct Run;
 
 #[derive(Component, Reflect, Default, FromTemplate)]
 #[reflect(Component)]
-#[require(Name::new("Lion"), Age(40), Transform::default())]
+#[require(Age(60), Transform::default())]
+pub struct LionGreatGrandpa;
+
+#[derive(Component, Reflect, Default, FromTemplate)]
+#[reflect(Component)]
+#[require(Age(40), Transform::default())]
 pub struct LionGrandpa;
 
 #[derive(Component, Reflect, Default, FromTemplate)]
 #[reflect(Component)]
-#[require(Name::new("LionFather"), Age(30), Transform::default())]
+#[require(Age(30), Transform::default())]
 pub struct LionFather;
 
 #[derive(Component, Reflect, Default, FromTemplate)]
 #[reflect(Component)]
-#[require(Name::new("Lion"), Age(20), Transform::default())]
+#[require(Age(20), Transform::default())]
 pub struct Lion;
 
 #[derive(Component, Reflect, Default, FromTemplate)]
 #[reflect(Component)]
-#[require(Name::new("LionSon"), Age(10), Transform::default())]
+#[require(Age(10), Transform::default())]
 pub struct LionSon;
 
 #[derive(Component, Reflect, Default, FromTemplate)]
 #[reflect(Component)]
-#[require(Name::new("LionGrandson"), Age(10), Transform::default())]
+#[require(Age(10), Transform::default())]
 pub struct LionGrandson;
+
+#[derive(Component, Reflect, Default, FromTemplate)]
+#[reflect(Component)]
+#[require(Age(10), Transform::default())]
+pub struct LionGreatGrandson;
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
@@ -280,18 +290,31 @@ fn spawn_rat_per_sec(
 
 pub fn spawn_lion_family(mut commands: Commands) {
     commands.spawn_scene(bsn!(
-        LionGrandpa
+        #LionGreatGrandpa
+        LionGreatGrandpa
         Children[(
-            LionFather
+            #LionGrandpa
+            LionGrandpa
             Children[(
+                #LionFater
+                LionFather
+            Children[(
+                #Lion
                 Lion
                 Children[(
+                    #LionSon
                     LionSon
                     Children[(
+                        #LionGrandson
                         LionGrandson
+                        Children[(
+                            #LionGreatGrandson
+                            LionGreatGrandson
+                        )]
                     )]
                 )]
             )]
         )]
+    )]
     ));
 }
