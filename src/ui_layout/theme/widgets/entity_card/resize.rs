@@ -1,6 +1,6 @@
 use bevy::window::{CursorIcon, SystemCursorIcon};
 
-use crate::manager::pinboard::load_save::PinboardSaveData;
+use crate::manager::workspace::load_save::PinboardSaveData;
 use crate::prelude::*;
 
 // ── Components ─────────────────────────────────────────────────────────────────

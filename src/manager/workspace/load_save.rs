@@ -1,4 +1,4 @@
-use crate::manager::pinboard::pin_card::spawn_pin_card;
+use crate::manager::workspace::pin_card::spawn_pin_card;
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{
     COLOR_ACTIVE, COLOR_BUTTON_TEXT, COLOR_HEADER_BG, COLOR_LABEL_SECONDARY, COLOR_OVERLAY_BG,
@@ -41,7 +41,7 @@ pub fn plugin(app: &mut App) {
     let save_path = PathBuf::from("pinboard_save.json");
 
     match Persistent::<PinboardSaveData>::builder()
-        .name("pinboard")
+        .name("workspace")
         .format(StorageFormat::Json)
         .path(save_path.clone())
         .default(PinboardSaveData::default())
@@ -118,7 +118,7 @@ fn error_dialog() -> impl Scene {
                     Children [
                         // INNER CHILD A: TEXT BODY
                         (
-                            Text::new("The existing save file format is incompatible with this version. Resetting will restore your pinboard to its default state. Would you like to proceed?")
+                            Text::new("The existing save file format is incompatible with this version. Resetting will restore your workspace to its default state. Would you like to proceed?")
                             template(|_| Ok(TextFont::from_font_size(14.0)))
                             TextColor(COLOR_LABEL_SECONDARY)
                         ),
@@ -179,7 +179,7 @@ fn on_reset_button(
         let _ = std::fs::remove_file(&save_path);
 
         match Persistent::<PinboardSaveData>::builder()
-            .name("pinboard")
+            .name("workspace")
             .format(StorageFormat::Json)
             .path(save_path)
             .default(PinboardSaveData::default())
@@ -199,7 +199,7 @@ fn on_reset_button(
 
 fn load_pinboard_data(
     save_data: Option<Res<Persistent<PinboardSaveData>>>,
-    pinboard: Query<Entity, With<PinboardContainer>>,
+    workspace: Query<Entity, With<PinboardContainer>>,
     mut pending: ResMut<PinboardPendingItem>,
     mut commands: Commands,
 ) {
@@ -209,7 +209,7 @@ fn load_pinboard_data(
     if save_data.cards.is_empty() {
         return;
     }
-    let Ok(pinboard_entity) = pinboard.single() else {
+    let Ok(pinboard_entity) = workspace.single() else {
         return;
     };
     for entry in &save_data.cards {

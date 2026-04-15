@@ -12,7 +12,7 @@ pub mod new_scene;
 
 pub mod entity_lookup;
 
-pub mod pinboard;
+pub mod workspace;
 
 pub fn plugin(app: &mut App) {
     app.add_plugins(BrpPlugin);
@@ -37,5 +37,5 @@ pub fn plugin(app: &mut App) {
 
     entity_lookup::plugin(app);
 
-    pinboard::plugin(app);
+    workspace::plugin(app);
 }

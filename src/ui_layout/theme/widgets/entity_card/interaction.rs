@@ -5,7 +5,7 @@ use crate::prelude::entity_card::*;
 use crate::prelude::*;
 
 use crate::manager::entity_filter::fetch::DiscoveredComponents;
-use crate::manager::pinboard::load_save::PinboardSaveData;
+use crate::manager::workspace::load_save::PinboardSaveData;
 use crate::ui_layout::theme::palette::COLOR_ROW_HOVER;
 use crate::ui_layout::theme::widgets::ScrollableContainer;
 

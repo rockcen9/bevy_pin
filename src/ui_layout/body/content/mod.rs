@@ -8,11 +8,11 @@ use crate::{
         },
         entity_lookup::{EntityLookupPanel, EntityLookupRootPanel, history_panel, lookup_panel},
         new_scene::{
-            NewScenePanel, NewScenePanelRoot, insert::spawn_entity_panel, history::spawned_panel,
+            NewScenePanel, NewScenePanelRoot, history::spawned_panel, insert::spawn_entity_panel,
         },
-        pinboard::ui::{PinboardContainer, pinboard_container},
         resource::ui::resource_panels_root,
         state::ui::state_panels_root,
+        workspace::ui::{PinboardContainer, pinboard_container},
     },
     prelude::*,
     ui_layout::theme::palette::COLOR_BG_BASE,
@@ -43,8 +43,8 @@ pub fn plugin(app: &mut App) {
         spawn_entity_lookup_panel.run_if(in_state(SidebarState::EntityLookup)),
     );
     app.add_systems(Startup, spawn_pinboard_container);
-    app.add_systems(OnEnter(SidebarState::Pinboard), on_enter_pinboard);
-    app.add_systems(OnExit(SidebarState::Pinboard), on_exit_pinboard);
+    app.add_systems(OnEnter(SidebarState::Workspace), on_enter_pinboard);
+    app.add_systems(OnExit(SidebarState::Workspace), on_exit_pinboard);
 }
 pub fn content_panel() -> impl Scene {
     bsn! {
@@ -208,12 +208,12 @@ fn spawn_pinboard_container(mut commands: Commands) {
 }
 
 fn on_enter_pinboard(
-    pinboard: Single<Entity, With<PinboardContainer>>,
+    workspace: Single<Entity, With<PinboardContainer>>,
     content: Single<Entity, With<ContentPanel>>,
     mut commands: Commands,
 ) {
-    commands.entity(*content).add_child(*pinboard);
-    commands.entity(*pinboard).insert((
+    commands.entity(*content).add_child(*workspace);
+    commands.entity(*workspace).insert((
         Visibility::Visible,
         Node {
             display: Display::Flex,
@@ -228,9 +228,9 @@ fn on_enter_pinboard(
     ));
 }
 
-fn on_exit_pinboard(pinboard: Single<Entity, With<PinboardContainer>>, mut commands: Commands) {
-    commands.entity(*pinboard).remove::<ChildOf>();
-    commands.entity(*pinboard).insert((
+fn on_exit_pinboard(workspace: Single<Entity, With<PinboardContainer>>, mut commands: Commands) {
+    commands.entity(*workspace).remove::<ChildOf>();
+    commands.entity(*workspace).insert((
         Visibility::Hidden,
         Node {
             display: Display::None,

@@ -42,8 +42,8 @@ fn main() -> AppExit {
                     "bevy_pin::ui_layout::theme::widgets::explorer_card=warn,",
                     "bevy_pin::ui_layout::theme::widgets::entity_card::interaction=warn,",
                     "bevy_pin::ui_layout::theme::widgets::entity_card::highlight=warn,",
-                    "bevy_pin::manager::pinboard::ui=warn,",
-                    "bevy_pin::manager::pinboard::pincard=warn,",
+                    "bevy_pin::manager::workspace::ui=warn,",
+                    "bevy_pin::manager::workspace::pincard=warn,",
                 ),
                 default = bevy::log::DEFAULT_FILTER
             ),

@@ -1,11 +1,11 @@
-use crate::manager::pinboard::load_save::PinboardSaveData;
+use crate::manager::workspace::load_save::PinboardSaveData;
 use crate::prelude::*;
 use crate::ui_layout::theme::widgets::entity_card::spawn_entity_card;
 use crate::ui_layout::theme::widgets::{DragHandle, close_button};
 
 // ── Marker / close button components ─────────────────────────────────────────
 
-/// Marks a card as belonging to the pinboard — only these cards receive a close button.
+/// Marks a card as belonging to the workspace — only these cards receive a close button.
 #[derive(Component, Clone, Default)]
 pub struct PinCard;
 

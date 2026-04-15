@@ -86,10 +86,10 @@ pub struct Bird { /* ... */ }
 - [x] pick from query history
 - [x] spawn new scene
 - [x] add components to entities
-- [x] pin entity info to the pinboard
+- [x] pin entity info to the workspace
 - [x] switch to a tree style view for components list
 - [x] parent and child entity view support
-- [ ] make the pin the entities, components, states, and resources to pinboard
+- [ ] make the pin the entities, components, states, and resources to workspace
 - [ ] remove children and child of components
 - [ ] highlight data fields whenever a value changes
 - [ ] improve the ui design
