@@ -1,8 +1,6 @@
 use crate::prelude::*;
 use crate::ui_layout::theme::palette::{COLOR_HEADER_BG, COLOR_PAUSED};
 
-use super::components::{EntityCardHeader, EntityCardTitle};
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 #[derive(Component, Default, Clone)]

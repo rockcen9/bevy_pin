@@ -9,11 +9,7 @@ pub fn parse_array_field(s: &str) -> Option<Vec<String>> {
     }
     let inner = &s[1..s.len() - 1];
     let parts: Vec<String> = inner.split(',').map(|v| v.trim().to_string()).collect();
-    if parts.len() >= 2 {
-        Some(parts)
-    } else {
-        None
-    }
+    if parts.len() >= 2 { Some(parts) } else { None }
 }
 
 const TRANSFORM_FIELD_ORDER: &[&str] = &["translation", "rotation", "scale"];
@@ -92,9 +88,21 @@ fn decompose_affine(arr: &[serde_json::Value]) -> Option<Vec<(String, String)>> 
     let sz = (m02 * m02 + m12 * m12 + m22 * m22).sqrt();
 
     let eps = 1e-10_f64;
-    let (r00, r10, r20) = if sx > eps { (m00/sx, m10/sx, m20/sx) } else { (1.0, 0.0, 0.0) };
-    let (r01, r11, r21) = if sy > eps { (m01/sy, m11/sy, m21/sy) } else { (0.0, 1.0, 0.0) };
-    let (r02, r12, r22) = if sz > eps { (m02/sz, m12/sz, m22/sz) } else { (0.0, 0.0, 1.0) };
+    let (r00, r10, r20) = if sx > eps {
+        (m00 / sx, m10 / sx, m20 / sx)
+    } else {
+        (1.0, 0.0, 0.0)
+    };
+    let (r01, r11, r21) = if sy > eps {
+        (m01 / sy, m11 / sy, m21 / sy)
+    } else {
+        (0.0, 1.0, 0.0)
+    };
+    let (r02, r12, r22) = if sz > eps {
+        (m02 / sz, m12 / sz, m22 / sz)
+    } else {
+        (0.0, 0.0, 1.0)
+    };
 
     let trace = r00 + r11 + r22;
     let (qx, qy, qz, qw) = if trace > 0.0 {
@@ -112,8 +120,14 @@ fn decompose_affine(arr: &[serde_json::Value]) -> Option<Vec<(String, String)>> 
     };
 
     Some(vec![
-        ("translation".to_string(), format!("[{tx:.3},{ty:.3},{tz:.3}]")),
-        ("rotation".to_string(), format!("[{qx:.3},{qy:.3},{qz:.3},{qw:.3}]")),
+        (
+            "translation".to_string(),
+            format!("[{tx:.3},{ty:.3},{tz:.3}]"),
+        ),
+        (
+            "rotation".to_string(),
+            format!("[{qx:.3},{qy:.3},{qz:.3},{qw:.3}]"),
+        ),
         ("scale".to_string(), format!("[{sx:.3},{sy:.3},{sz:.3}]")),
     ])
 }
@@ -151,11 +165,17 @@ fn normalize_bare_decimals(s: &str) -> String {
 }
 
 pub fn entity_display_label(raw_id: u64) -> String {
+    // Casting to u32 automatically truncates the top 32 bits, leaving just the index
     let entity_index = raw_id as u32;
+
     let display_index = if entity_index > 4_000_000_000 {
         u32::MAX - entity_index
     } else {
         entity_index
     };
-    format!("v{}", display_index)
+
+    // Shift the bits right by 32 to move the generation data to the bottom half
+    let generation = (raw_id >> 32) as u32;
+
+    format!("{}v{}", display_index, generation)
 }

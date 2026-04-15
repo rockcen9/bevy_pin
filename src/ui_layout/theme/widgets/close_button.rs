@@ -1,5 +1,7 @@
 use crate::prelude::*;
-use crate::ui_layout::theme::palette::{COLOR_DESTRUCTIVE_HOVER, COLOR_HEADER_BG, COLOR_INPUT_TEXT};
+use crate::ui_layout::theme::palette::{
+    COLOR_DESTRUCTIVE_HOVER, COLOR_HEADER_BG, COLOR_INPUT_TEXT,
+};
 
 #[derive(Component, Clone, Default)]
 pub struct CloseButtonWidget;
@@ -17,8 +19,8 @@ pub fn close_button<B: Bundle + Clone>(payload: B) -> impl Scene {
         CloseButtonWidget
         template(move |_| Ok(payload.clone()))
         Node {
-            width: Val::Px(24.0),
-            height: Val::Px(24.0),
+            width: Val::Px(20.0),
+            height: Val::Px(20.0),
             border_radius: BorderRadius::all(Val::Px(4.0)),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,

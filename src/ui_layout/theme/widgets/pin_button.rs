@@ -14,15 +14,15 @@ pub fn pin_button<B: Bundle + Clone>(payload: B) -> impl Scene {
         PinButtonWidget
         template(move |_| Ok(payload.clone()))
         Node {
-            width: Val::Px(24.0),
-            height: Val::Px(24.0),
+            width: Val::Px(20.0),
+            height: Val::Px(20.0),
             border_radius: BorderRadius::all(Val::Px(4.0)),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
         }
         BackgroundColor(COLOR_HEADER_BG)
         Children [(
-            Text::new("O")
+            Text::new("o")
             template(|_| Ok(TextFont::from_font_size(16.0)))
             TextColor(COLOR_INPUT_TEXT)
         )]

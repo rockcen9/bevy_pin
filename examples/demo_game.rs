@@ -8,7 +8,12 @@ fn main() {
     let default_plugins = MinimalPlugins.set(ScheduleRunnerPlugin::run_loop(
         std::time::Duration::from_millis(16),
     ));
-    app.add_plugins((default_plugins, StatesPlugin));
+    app.add_plugins((
+        default_plugins,
+        StatesPlugin,
+        bevy::asset::AssetPlugin::default(),
+        bevy::scene::ScenePlugin,
+    ));
     game_manager(&mut app);
     app.run();
 }
@@ -48,6 +53,8 @@ fn game_manager(app: &mut App) {
     // _demo_resource(app);
 
     _demo_component(app);
+
+    app.add_systems(Startup, spawn_lion_family);
 }
 
 pub fn entity_plugin(app: &mut App) {
@@ -153,10 +160,30 @@ pub struct Fly;
 #[require(Name::new("Run"))]
 pub struct Run;
 
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Reflect, Default, FromTemplate)]
 #[reflect(Component)]
-#[require(Name::new("Lion"), Age(10), Transform::default())]
+#[require(Name::new("Lion"), Age(40), Transform::default())]
+pub struct LionGrandpa;
+
+#[derive(Component, Reflect, Default, FromTemplate)]
+#[reflect(Component)]
+#[require(Name::new("LionFather"), Age(30), Transform::default())]
+pub struct LionFather;
+
+#[derive(Component, Reflect, Default, FromTemplate)]
+#[reflect(Component)]
+#[require(Name::new("Lion"), Age(20), Transform::default())]
 pub struct Lion;
+
+#[derive(Component, Reflect, Default, FromTemplate)]
+#[reflect(Component)]
+#[require(Name::new("LionSon"), Age(10), Transform::default())]
+pub struct LionSon;
+
+#[derive(Component, Reflect, Default, FromTemplate)]
+#[reflect(Component)]
+#[require(Name::new("LionGrandson"), Age(10), Transform::default())]
+pub struct LionGrandson;
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
@@ -245,8 +272,26 @@ fn spawn_rat_per_sec(
     }
     timer.tick(time.delta());
     if timer.just_finished() {
-        commands.spawn((Rat::default(),));
+        let id = commands.spawn((Rat::default(),)).id();
         *count += 1;
-        println!("spawned rat {} / 20", *count);
+        println!("spawned rat {}, {} / 20", id, *count);
     }
+}
+
+pub fn spawn_lion_family(mut commands: Commands) {
+    commands.spawn_scene(bsn!(
+        LionGrandpa
+        Children[(
+            LionFather
+            Children[(
+                Lion
+                Children[(
+                    LionSon
+                    Children[(
+                        LionGrandson
+                    )]
+                )]
+            )]
+        )]
+    ));
 }

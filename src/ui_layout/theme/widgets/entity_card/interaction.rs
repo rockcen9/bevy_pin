@@ -1,17 +1,14 @@
-use bevy::{
-    input_focus::InputFocus,
-    text::{EditableText, TextEdit},
-};
+use bevy::input_focus::InputFocus;
+use bevy::text::{EditableText, TextEdit};
 
-use crate::manager::pinboard::load_save::PinboardSaveData;
+use crate::prelude::entity_card::*;
 use crate::prelude::*;
+
+use crate::manager::entity_filter::fetch::DiscoveredComponents;
+use crate::manager::pinboard::load_save::PinboardSaveData;
 use crate::ui_layout::theme::palette::COLOR_ROW_HOVER;
 use crate::ui_layout::theme::widgets::ScrollableContainer;
 
-use super::components::{
-    EditableEntityCardField, EntityCard, EntityCardDataCache, EntityCardExpandState,
-    EntityCardExpandToggle, EntityCardInsertField, EntityCardScrollOuter, entity_card_key,
-};
 use super::layout::render_pincard;
 
 // ── Components ─────────────────────────────────────────────────────────────────
@@ -123,6 +120,8 @@ pub(super) fn handle_expand_toggle(
 pub(super) fn render_from_cache_on_expand_change(
     expand_state: Res<EntityCardExpandState>,
     cache: Res<EntityCardDataCache>,
+    children_cache: Res<EntityCardChildrenCache>,
+    discovered_components: Res<DiscoveredComponents>,
     containers: Query<(Entity, &ScrollableContainer)>,
     input_focus: Res<InputFocus>,
     editable_fields: Query<&EditableEntityCardField>,
@@ -167,6 +166,8 @@ pub(super) fn render_from_cache_on_expand_change(
                 *entity_id,
                 components,
                 &expand_state,
+                &children_cache,
+                &discovered_components,
             );
         }
     }

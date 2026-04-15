@@ -219,16 +219,17 @@ fn send_lookup(display_index: u32, url: &str, commands: &mut Commands) {
                     commands.entity(ecs_entity).despawn();
                     return;
                 };
-                let target_label = format!("v{}", ctx.display_index);
+                let target_prefix = format!("{}v", ctx.display_index);
                 if let Ok(data) = &response.data {
                     let found = data.result.iter().find(|entry| {
-                        crate::utils::entity_display_label(entry.entity) == target_label
+                        crate::utils::entity_display_label(entry.entity)
+                            .starts_with(&target_prefix)
                     });
                     match found {
                         Some(entry) => {
                             debug!(
                                 "EntityLookup: found entity #{} for '{}'",
-                                entry.entity, target_label
+                                entry.entity, target_prefix
                             );
                             let entity_id = entry.entity;
                             let name_type_path = entry
@@ -293,9 +294,9 @@ fn send_lookup(display_index: u32, url: &str, commands: &mut Commands) {
                             }
                         }
                         None => {
-                            debug!("EntityLookup: no entity found for '{}'", target_label);
+                            debug!("EntityLookup: no entity found for '{}'", target_prefix);
                             show_global_message(
-                                format!("No entity found for '{}'", target_label),
+                                format!("No entity found for '{}'", target_prefix),
                                 &mut commands,
                             );
                         }
