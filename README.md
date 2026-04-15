@@ -95,7 +95,8 @@ pub struct Bird { /* ... */ }
 - [ ] remove children and child of components
 - [ ] highlight data fields whenever a value changes
 - [ ] improve the ui design
-- [ ] Debug observers
+- [ ] support multiple workspaces
+- [ ] debug observers
 
 ## Compatible Versions
 
