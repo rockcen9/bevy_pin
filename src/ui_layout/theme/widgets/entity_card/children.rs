@@ -262,7 +262,7 @@ fn spawn_child_row(
     is_expanded: bool,
     components: &Res<DiscoveredComponents>,
 ) -> Entity {
-    let indent = 42.0 + (depth as f32) * 2.0;
+    let indent = 42.0 + (depth as f32) * 8.0;
     let icon = if has_children {
         if is_expanded { "V" } else { ">" }
     } else {

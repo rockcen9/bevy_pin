@@ -348,6 +348,7 @@ fn on_pincard_get_response(
     containers: Query<(Entity, &ScrollableContainer)>,
     expand_state: Res<EntityCardExpandState>,
     children_cache: Res<EntityCardChildrenCache>,
+    parent_cache: Res<super::childof::EntityCardParentCache>,
     discovered_components: Res<DiscoveredComponents>,
     mut cache: ResMut<EntityCardDataCache>,
     input_focus: Res<InputFocus>,
@@ -403,6 +404,7 @@ fn on_pincard_get_response(
                                 cached,
                                 &expand_state,
                                 &children_cache,
+                                &parent_cache,
                                 &discovered_components,
                             );
                         }

@@ -40,6 +40,10 @@ pub(super) const INSERT_SENTINEL: &str = "__insert__";
 /// because the entity card has its own custom children tree renderer.
 const BEVY_CHILDREN_TYPE_PATH: &str = "bevy_ecs::hierarchy::Children";
 
+/// Bevy's built-in `ChildOf` component type path — hidden from the component list
+/// because the entity card has its own custom ChildOf ancestry renderer.
+const BEVY_CHILD_OF_TYPE_PATH: &str = "bevy_ecs::hierarchy::ChildOf";
+
 // ── Components ────────────────────────────────────────────────────────────────
 
 /// Data component on the outer card container — carries entity_id and initial height.
@@ -186,6 +190,7 @@ pub(super) fn render_pincard(
     components: &serde_json::Map<String, serde_json::Value>,
     expand_state: &EntityCardExpandState,
     children_cache: &super::children::EntityCardChildrenCache,
+    parent_cache: &super::childof::EntityCardParentCache,
     discovered_components: &Res<DiscoveredComponents>,
 ) {
     commands.entity(container_entity).despawn_children();
@@ -246,11 +251,41 @@ pub(super) fn render_pincard(
         }
     }
 
+    // ── ChildOf (ancestor) tree ───────────────────────────────────────────────
+    let ancestors =
+        super::childof::collect_ancestors(entity_id, parent_cache);
+    let is_childof_expanded = expand_state
+        .0
+        .get(&entity_id)
+        .map(|s| s.contains(super::childof::CHILDOF_SENTINEL))
+        .unwrap_or(false);
+
+    let childof_hdr = commands
+        .spawn_scene(super::childof::childof_header(
+            entity_id,
+            is_childof_expanded,
+            ancestors.len(),
+        ))
+        .id();
+    commands.entity(container_entity).add_child(childof_hdr);
+
+    if is_childof_expanded {
+        super::childof::render_ancestor_tree(
+            commands,
+            container_entity,
+            entity_id,
+            parent_cache,
+            discovered_components,
+        );
+    }
+
     let mut sorted: Vec<(&String, &serde_json::Value)> = components.iter().collect();
     sorted.sort_by_key(|(k, _)| k.as_str());
 
     for (type_path, value) in sorted {
-        if type_path.as_str() == BEVY_CHILDREN_TYPE_PATH {
+        if type_path.as_str() == BEVY_CHILDREN_TYPE_PATH
+            || type_path.as_str() == BEVY_CHILD_OF_TYPE_PATH
+        {
             continue;
         }
 
