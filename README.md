@@ -4,7 +4,7 @@
 
 > **Inspect Bevy, Built with Bevy. 🕊️**
 
-Bevy Pin is a browser-based spatial workspace for remote debugging and data inspection.
+Bevy Pin is a browser-based spatial workspace for remote data inspection.
 
 - 📌 **Pin Data:** Spatially map essential state onto a canvas for streamlined debugging.
 - 📦 **Zero External Dependencies:** Built natively, no third-party crates needed in your game project!
