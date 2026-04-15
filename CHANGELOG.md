@@ -3,6 +3,10 @@
 ### 🚀 Features
 
 - Display entity descendant hierarchy
+
+### ⚙️ Miscellaneous Tasks
+
+- Release
 ## [0.1.16] - 2026-04-14
 
 ### 🚀 Features
