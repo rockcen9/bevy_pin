@@ -36,6 +36,10 @@ fn default_card_height() -> f32 {
 /// Sentinel type_path stored in `PinCardExpandState` for the insert-component row.
 pub(super) const INSERT_SENTINEL: &str = "__insert__";
 
+/// Bevy's built-in `Children` component type path — hidden from the component list
+/// because the entity card has its own custom children tree renderer.
+const BEVY_CHILDREN_TYPE_PATH: &str = "bevy_ecs::hierarchy::Children";
+
 // ── Components ────────────────────────────────────────────────────────────────
 
 /// Data component on the outer card container — carries entity_id and initial height.
@@ -204,48 +208,6 @@ pub(super) fn render_pincard(
         commands.entity(container_entity).add_child(insert_row);
     }
 
-    let mut sorted: Vec<(&String, &serde_json::Value)> = components.iter().collect();
-    sorted.sort_by_key(|(k, _)| k.as_str());
-
-    for (type_path, value) in sorted {
-        let short_name = type_path
-            .split("::")
-            .last()
-            .unwrap_or(type_path)
-            .to_string();
-
-        let is_expandable = match value {
-            serde_json::Value::Null => false,
-            serde_json::Value::Object(m) => !m.is_empty(),
-            serde_json::Value::Array(a) => !a.is_empty(),
-            _ => true, // string / number / bool → single-value tuple
-        };
-        let is_expanded = expand_state
-            .0
-            .get(&entity_id)
-            .map(|s| s.contains(type_path))
-            .unwrap_or(false);
-
-        let header = spawn_component_header(
-            commands,
-            entity_id,
-            type_path,
-            short_name,
-            value,
-            is_expandable,
-            is_expanded,
-        );
-        commands.entity(container_entity).add_child(header);
-
-        if is_expanded {
-            for (field_name, field_value) in parse_fields(unwrap_newtype(value)) {
-                let row =
-                    spawn_field_row(commands, entity_id, type_path, &field_name, &field_value);
-                commands.entity(container_entity).add_child(row);
-            }
-        }
-    }
-
     // ── Children tree ─────────────────────────────────────────────────────────
     let child_ids: Vec<u64> = children_cache
         .0
@@ -281,6 +243,52 @@ pub(super) fn render_pincard(
                 children_cache,
                 discovered_components,
             );
+        }
+    }
+
+    let mut sorted: Vec<(&String, &serde_json::Value)> = components.iter().collect();
+    sorted.sort_by_key(|(k, _)| k.as_str());
+
+    for (type_path, value) in sorted {
+        if type_path.as_str() == BEVY_CHILDREN_TYPE_PATH {
+            continue;
+        }
+
+        let short_name = type_path
+            .split("::")
+            .last()
+            .unwrap_or(type_path)
+            .to_string();
+
+        let is_expandable = match value {
+            serde_json::Value::Null => false,
+            serde_json::Value::Object(m) => !m.is_empty(),
+            serde_json::Value::Array(a) => !a.is_empty(),
+            _ => true, // string / number / bool → single-value tuple
+        };
+        let is_expanded = expand_state
+            .0
+            .get(&entity_id)
+            .map(|s| s.contains(type_path))
+            .unwrap_or(false);
+
+        let header = spawn_component_header(
+            commands,
+            entity_id,
+            type_path,
+            short_name,
+            value,
+            is_expandable,
+            is_expanded,
+        );
+        commands.entity(container_entity).add_child(header);
+
+        if is_expanded {
+            for (field_name, field_value) in parse_fields(unwrap_newtype(value)) {
+                let row =
+                    spawn_field_row(commands, entity_id, type_path, &field_name, &field_value);
+                commands.entity(container_entity).add_child(row);
+            }
         }
     }
 }
