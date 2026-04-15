@@ -1,3 +1,13 @@
+## [0.1.19] - 2026-04-15
+
+### 🚀 Features
+
+- Display entity ascendants
+## [0.1.18] - 2026-04-15
+
+### ⚙️ Miscellaneous Tasks
+
+- Release
 ## [0.1.17] - 2026-04-15
 
 ### 🚀 Features
