@@ -61,8 +61,8 @@ pub fn state_panels_root() -> impl Scene {
             position_type: PositionType::Absolute,
             top: Val::Px(20.0),
             left: Val::Px(20.0),
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(10.0),
+            flex_direction: FlexDirection::Row,
+            column_gap: Val::Px(10.0),
             flex_wrap: FlexWrap::Wrap
         }
     }
