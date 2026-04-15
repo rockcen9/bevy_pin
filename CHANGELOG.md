@@ -1,8 +1,17 @@
+## [0.1.17] - 2026-04-15
+
+### 🚀 Features
+
+- Display entity descendant hierarchy
 ## [0.1.16] - 2026-04-14
 
 ### 🚀 Features
 
 - Despawn entity for entity card
+
+### ⚙️ Miscellaneous Tasks
+
+- Release
 ## [0.1.15] - 2026-04-14
 
 ### ⚙️ Miscellaneous Tasks
