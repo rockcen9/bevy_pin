@@ -92,6 +92,7 @@ pub struct Bird { /* ... */ }
 - [x] switch to a tree style view for components list
 - [ ] parent and child entity view support
 - [ ] make the pin the entities, components, states, and resources to pinboard
+- [ ] remove children and child of components
 - [ ] highlight data fields whenever a value changes
 - [ ] improve the ui design
 - [ ] Debug observers
