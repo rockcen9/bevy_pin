@@ -25,7 +25,7 @@ pub fn plugin(app: &mut App) {
         Update,
         (
             debug_highlight_added,
-            drive_pincard_highlight.run_if(in_state(SidebarState::Pinboard)),
+            drive_pincard_highlight.run_if(in_state(SidebarState::Workspace)),
         ),
     );
 }

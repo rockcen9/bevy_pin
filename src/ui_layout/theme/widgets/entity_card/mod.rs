@@ -1,5 +1,5 @@
-mod children;
 mod childof;
+mod children;
 mod highlight;
 mod interaction;
 mod layout;
@@ -8,7 +8,6 @@ mod rpc;
 
 use crate::prelude::*;
 pub use children::EntityCardChildrenCache;
-pub use childof::EntityCardParentCache;
 pub use core::*;
 pub use highlight::*;
 pub use interaction::DragHandle;

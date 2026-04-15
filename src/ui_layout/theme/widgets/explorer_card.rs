@@ -1,6 +1,6 @@
 use crate::manager::entity_filter::fetch::DiscoveredComponents;
 use crate::{
-    manager::pinboard::{
+    manager::workspace::{
         load_save::{PinboardPendingData, PinboardPendingItem, PinboardSaveData},
         pin_card::spawn_pin_card,
         ui::PinboardContainer,
@@ -59,7 +59,7 @@ pub fn spawn_explorer_card(
 fn on_pin_button(
     buttons: Query<(&Interaction, &PinButton), (Changed<Interaction>, With<Button>)>,
     cards: Query<(&EntityCard, &Node), With<ExplorerCard>>,
-    pinboard: Query<Entity, With<PinboardContainer>>,
+    workspace: Query<Entity, With<PinboardContainer>>,
     components: Res<DiscoveredComponents>,
     mut save_data: Option<ResMut<Persistent<PinboardSaveData>>>,
     mut pending: ResMut<PinboardPendingItem>,
@@ -103,7 +103,7 @@ fn on_pin_button(
             label, left, top, width, height
         );
 
-        // If already pinned, highlight the existing card and switch to pinboard
+        // If already pinned, highlight the existing card and switch to workspace
         if save_data.as_ref().map_or(false, |sd| {
             sd.cards.iter().any(|c| c.entity_id == entity_id)
         }) {
@@ -116,16 +116,16 @@ fn on_pin_button(
                 key: entity_card_key(entity_id),
                 highlight: true,
             });
-            next_sidebar.set(SidebarState::Pinboard);
+            next_sidebar.set(SidebarState::Workspace);
             continue;
         }
 
-        let Ok(pinboard_entity) = pinboard.single() else {
+        let Ok(pinboard_entity) = workspace.single() else {
             debug!("on_pin_button: PinboardContainer not found");
             continue;
         };
         debug!(
-            "on_pin_button: spawning pincard for entity_id={} on pinboard {:?}",
+            "on_pin_button: spawning pincard for entity_id={} on workspace {:?}",
             entity_id, pinboard_entity
         );
         let key = entity_card_key(entity_id);
@@ -158,7 +158,7 @@ fn on_pin_button(
             key,
             highlight: true,
         });
-        debug!("on_pin_button: done, setting SidebarState::Pinboard");
-        next_sidebar.set(SidebarState::Pinboard);
+        debug!("on_pin_button: done, setting SidebarState::Workspace");
+        next_sidebar.set(SidebarState::Workspace);
     }
 }

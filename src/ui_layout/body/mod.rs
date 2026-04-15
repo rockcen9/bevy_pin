@@ -34,5 +34,5 @@ pub enum SidebarState {
     EntityLookup,
     State,
     Resource,
-    Pinboard,
+    Workspace,
 }

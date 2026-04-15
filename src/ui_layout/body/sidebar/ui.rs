@@ -24,7 +24,7 @@ struct NewScene;
 struct EntityLookupButton;
 
 #[derive(Component, Default, Clone)]
-struct PinboardButton;
+struct WorkspaceButton;
 
 #[derive(Component, Default, Clone)]
 struct GithubButton;
@@ -65,7 +65,7 @@ pub fn menu_panel() -> impl Scene {
             new_scene_button(),
             resource_button(),
             state_button(),
-            pinboard_button(),
+            workspace_button(),
        (
                 Node {
                     flex_grow: 1.0,
@@ -138,9 +138,9 @@ fn state_button() -> impl Scene {
     }
 }
 
-fn pinboard_button() -> impl Scene {
+fn workspace_button() -> impl Scene {
     bsn! {
-        PinboardButton
+        WorkspaceButton
         Button
         Node {
             width: Val::Percent(100.0),
@@ -152,7 +152,7 @@ fn pinboard_button() -> impl Scene {
         }
         BackgroundColor(COLOR_MENU_NORMAL)
         Children [(
-            Text("Pinboard")
+            Text("Workspace")
             template(|_| Ok(TextFont::from_font_size(15.0)))
             TextColor(COLOR_LABEL_SECONDARY)
         )]
@@ -211,7 +211,7 @@ fn sync_menu_button_colors(
             Option<&ResourceButton>,
             Option<&NewScene>,
             Option<&EntityLookupButton>,
-            Option<&PinboardButton>,
+            Option<&WorkspaceButton>,
         ),
         Or<(
             With<ComponentButton>,
@@ -219,11 +219,11 @@ fn sync_menu_button_colors(
             With<StateButton>,
             With<NewScene>,
             With<EntityLookupButton>,
-            With<PinboardButton>,
+            With<WorkspaceButton>,
         )>,
     >,
 ) {
-    for (interaction, mut bg, comp, res, new_scene, lookup, pinboard) in &mut query {
+    for (interaction, mut bg, comp, res, new_scene, lookup, workspace) in &mut query {
         let is_active = if comp.is_some() {
             *app_state.get() == SidebarState::EntityFilter
         } else if res.is_some() {
@@ -232,8 +232,8 @@ fn sync_menu_button_colors(
             *app_state.get() == SidebarState::NewScene
         } else if lookup.is_some() {
             *app_state.get() == SidebarState::EntityLookup
-        } else if pinboard.is_some() {
-            *app_state.get() == SidebarState::Pinboard
+        } else if workspace.is_some() {
+            *app_state.get() == SidebarState::Workspace
         } else {
             *app_state.get() == SidebarState::State
         };
@@ -306,12 +306,12 @@ fn on_entity_lookup_button(
 }
 
 fn on_pinboard_button(
-    query: Query<&Interaction, (Changed<Interaction>, With<PinboardButton>)>,
+    query: Query<&Interaction, (Changed<Interaction>, With<WorkspaceButton>)>,
     mut next_state: ResMut<NextState<SidebarState>>,
 ) {
     for interaction in &query {
         if *interaction == Interaction::Pressed {
-            next_state.set(SidebarState::Pinboard);
+            next_state.set(SidebarState::Workspace);
         }
     }
 }

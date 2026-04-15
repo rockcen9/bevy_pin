@@ -53,10 +53,10 @@ fn populate_pinboard(
         };
         let data = pending.0.remove(idx);
         debug!(
-            "populate_pinboard: matched entity_id={} highlight={}, setting Pinboard",
+            "populate_pinboard: matched entity_id={} highlight={}, setting Workspace",
             data.entity_id, data.highlight
         );
-        next_sidebar.set(SidebarState::Pinboard);
+        next_sidebar.set(SidebarState::Workspace);
 
         if data.highlight {
             if let Some((_title_entity, _)) = titles.iter().find(|(_, t)| t.0 == data.entity_id) {
@@ -76,7 +76,7 @@ fn populate_pinboard(
         }
     }
 
-    // Handle cards that already exist in the pinboard (no new container will be added).
+    // Handle cards that already exist in the workspace (no new container will be added).
     pending.0.retain(|data| {
         let Some((title_entity, _)) = titles.iter().find(|(_, t)| t.0 == data.entity_id) else {
             return true; // card not yet spawned, keep pending
@@ -85,7 +85,7 @@ fn populate_pinboard(
             "populate_pinboard: existing card entity_id={} highlight={}",
             data.entity_id, data.highlight
         );
-        next_sidebar.set(SidebarState::Pinboard);
+        next_sidebar.set(SidebarState::Workspace);
         if data.highlight {
             debug!(
                 "populate_pinboard: inserting PinCardHighlight on existing {:?}",

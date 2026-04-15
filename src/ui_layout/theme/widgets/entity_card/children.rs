@@ -1,6 +1,6 @@
 use crate::manager::connection::ServerUrl;
 use crate::manager::entity_filter::fetch::{ComponentEntry, DiscoveredComponents};
-use crate::manager::pinboard::{
+use crate::manager::workspace::{
     load_save::{PinboardPendingData, PinboardPendingItem, PinboardSaveData},
     pin_card::spawn_pin_card,
     ui::PinboardContainer,
@@ -348,7 +348,7 @@ fn spawn_child_row(
 
 fn on_child_pin_button(
     buttons: Query<(&Interaction, &ChildPinButton), (Changed<Interaction>, With<Button>)>,
-    pinboard: Query<Entity, With<PinboardContainer>>,
+    workspace: Query<Entity, With<PinboardContainer>>,
     components: Res<DiscoveredComponents>,
     mut save_data: Option<ResMut<Persistent<PinboardSaveData>>>,
     mut pending: ResMut<PinboardPendingItem>,
@@ -369,11 +369,11 @@ fn on_child_pin_button(
                 key: entity_card_key(entity_id),
                 highlight: true,
             });
-            next_sidebar.set(SidebarState::Pinboard);
+            next_sidebar.set(SidebarState::Workspace);
             continue;
         }
 
-        let Ok(pinboard_entity) = pinboard.single() else {
+        let Ok(pinboard_entity) = workspace.single() else {
             continue;
         };
 
@@ -413,7 +413,7 @@ fn on_child_pin_button(
             key,
             highlight: true,
         });
-        next_sidebar.set(SidebarState::Pinboard);
+        next_sidebar.set(SidebarState::Workspace);
     }
 }
 
