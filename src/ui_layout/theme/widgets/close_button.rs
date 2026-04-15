@@ -27,7 +27,7 @@ pub fn close_button<B: Bundle + Clone>(payload: B) -> impl Scene {
         }
         BackgroundColor(COLOR_HEADER_BG)
         Children [(
-            Text::new("X")
+            Text::new("x")
             template(|_| Ok(TextFont::from_font_size(16.0)))
             TextColor(COLOR_INPUT_TEXT)
         )]
