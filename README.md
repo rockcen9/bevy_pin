@@ -34,7 +34,7 @@ cargo run
 
 ### [0.1.17] - 2026-04-15
 
-- feat: feat: display entity descendant hierarchy
+- feat: display entity descendant hierarchy
 
 ### [0.1.14] - 2026-04-14
 
