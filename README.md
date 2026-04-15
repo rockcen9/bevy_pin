@@ -30,15 +30,13 @@ cargo run
 
 *It will keep trying to connect to `http://127.0.0.1:15702` by default.*
 
-## [Changelog](./CHANGELOG.md)
+### [0.1.19] - 2026-04-16
+
+- feat: display entity ascendants
 
 ### [0.1.17] - 2026-04-15
 
 - feat: display entity descendant hierarchy
-
-### [0.1.14] - 2026-04-14
-
-- update new scene and entity lookup for the new explorer card
 
 ## Features
 
@@ -90,7 +88,7 @@ pub struct Bird { /* ... */ }
 - [x] add components to entities
 - [x] pin entity info to the pinboard
 - [x] switch to a tree style view for components list
-- [ ] parent and child entity view support
+- [x] parent and child entity view support
 - [ ] make the pin the entities, components, states, and resources to pinboard
 - [ ] remove children and child of components
 - [ ] highlight data fields whenever a value changes
