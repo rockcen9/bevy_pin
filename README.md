@@ -32,13 +32,13 @@ cargo run
 
 ## [Changelog](./CHANGELOG.md)
 
+### [0.1.17] - 2026-04-15
+
+- feat: feat: display entity descendant hierarchy
+
 ### [0.1.14] - 2026-04-14
 
 - update new scene and entity lookup for the new explorer card
-
-### [0.1.12] - 2026-04-11
-
-- feat: pin entity info to the pinboard
 
 ## Features
 
